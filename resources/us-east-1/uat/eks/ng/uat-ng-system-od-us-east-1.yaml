@@ -1,0 +1,32 @@
+# System pool: kube-system / cluster-critical workloads. Files are
+# SELF-CONTAINED on purpose (org node-group format) - node_group_defaults
+# is gone from config.yaml, so every key deploys from THIS file.
+# Final EKS name: <org>-<env>-<name>  e.g. u25c-uat-ng-system-od-us-east-1
+name: ng-system-od-us-east-1
+
+instance_type_list:
+  - t3.large
+
+min_size: 1
+desired_size: 2
+max_size: 4
+disk_size: 20 # GiB
+
+# k8s_labels: # none for this pool
+#   baseservice: system
+
+# k8s_taints: # none for this pool; format is <key>: <value>:<Effect>
+#   baseservice: system:NoSchedule
+
+# false = this environment's private subnets, true = public - both
+# resolved from the network stack at plan time.
+public_instance: false
+
+# subnet_ids: # explicit ids would override public_instance - never
+#   - subnet-xxxxxx # committed here (public repo; ids come from remote state)
+
+# tags: # extra per-group tags (Org/Env/... come from provider default_tags)
+#   BaseService: system-OnDemand
+
+use_al2023_ami: true
+use_on_demand_instance: true

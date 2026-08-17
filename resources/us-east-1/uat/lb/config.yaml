@@ -1,0 +1,46 @@
+# Terraform OWNS this load balancer - the ALB, listeners, target groups
+# and security groups are IaC, and deleting a Kubernetes object can never
+# delete them. The AWS Load Balancer Controller's only job here is
+# registering pod IPs into the target groups via TargetGroupBinding (see
+# README.md). That split keeps the LB's DNS name stable across cluster
+# rebuilds and is what later allows blue-green across clusters.
+# Every wired value is stated here on purpose (strict lookups in main.tf).
+# The "# default:" comments show what the lb module would use if the value
+# were optional - kept for reference, but THIS file is what deploys.
+alb:
+  name: alb
+  internal: false                  # default: false (true = private subnets, no public IPs)
+  ingress_cidrs: [0.0.0.0/0]       # default: [0.0.0.0/0]; narrow for internal/admin ALBs
+  ip_address_type: ipv4            # default: ipv4 (or dualstack)
+  idle_timeout: 60                 # default: 60 (seconds)
+  drop_invalid_header_fields: true # default: true
+
+  # uat is rebuilt at will; MUST be true in prod - the ALB's DNS name is
+  # an external contract and a delete severs every record pointing at it.
+  deletion_protection: false # default: false
+
+  # ACM certificate looked up by domain at plan time - an ALIAS-style
+  # lookup, never an ARN, because this file is public (ARNs embed the
+  # account id). null = no HTTPS listener, plain HTTP on :80 (dev only;
+  # set a domain before exposing anything real).
+  certificate_domain: null # default: null (e.g. "*.uat.example.com")
+
+  ssl_policy: ELBSecurityPolicy-TLS13-1-2-2021-06 # default: same (unused while certificate_domain is null)
+
+# target_group_defaults apply to every target group under tg/*.yaml unless
+# the group's own file overrides them. NOTE: the merge is shallow - a tg
+# file that sets health_check replaces the WHOLE map, so restate every
+# health_check key you keep. No files in tg/ = an ALB that answers 404 to
+# everything (the skeleton applies cleanly before any app exists).
+target_groups:
+  target_group_defaults:
+    protocol: HTTP             # default: HTTP (pod-side; TLS terminates at the ALB)
+    deregistration_delay: 30   # default: 30 (seconds of connection draining)
+    health_check:
+      path: /                  # default: /
+      port: traffic-port       # default: traffic-port (or a port number as a string)
+      interval: 15             # default: 15 (seconds)
+      timeout: 5               # default: 5 (seconds)
+      healthy_threshold: 2     # default: 2
+      unhealthy_threshold: 3   # default: 3
+      matcher: "200-399"       # default: "200-399" (HTTP codes counted healthy)

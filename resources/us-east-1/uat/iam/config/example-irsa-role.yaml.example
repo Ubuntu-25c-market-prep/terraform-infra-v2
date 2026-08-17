@@ -1,0 +1,14 @@
+# IRSA role: assumable ONLY by this service account in this namespace.
+name: example-irsa
+type: irsa
+description: Example IRSA role - copy, rename, adjust
+namespace: kube-system      # REQUIRED for irsa
+service_account: example-sa # REQUIRED for irsa
+policy_arns:
+  - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+policy:
+  - effect: Allow
+    actions:
+      - sqs:ReceiveMessage
+    resources:
+      - "*"

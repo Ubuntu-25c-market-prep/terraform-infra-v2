@@ -1,0 +1,46 @@
+# --- bastion host, on purpose ----------------------------------------
+# One small instance in a PUBLIC subnet - it needs a public IP because
+# with nat_gateway = none in the network stack there is no NAT path in
+# or out of the private subnets. Access is SSH; private workloads are
+# reached through it:
+#   ssh -J ec2-user@<bastion-public-ip> ec2-user@<private-ip>
+# Every wired value is stated here on purpose (strict lookups in main.tf).
+# The "# default:" comments show what the bastion module would use if the value
+# were optional - kept for reference, but THIS file is what deploys.
+
+bastion:
+  create_security_group: true # default: true (SSH in from ssh_ingress_cidrs, out per egress_rules)
+
+  # PLACEHOLDER: paste the team's PUBLIC key - safe in a public repo, only
+  # the private half is secret. Terraform creates the key pair from it.
+  # To use a key pair created outside this repo instead, set key_name and
+  # put ssh_public_key back to null.
+  ssh_public_key: CHANGE_ME # default: null (e.g. "ssh-ed25519 AAAA... team@u25c")
+  key_name: null            # default: null (name of an existing key pair)
+
+  # This repo is public: keep this list generic. Narrow it at plan time
+  # in CI, never by committing personal/office IPs.
+  ssh_ingress_cidrs: [0.0.0.0/0] # default: [] (no SSH ingress rule)
+
+  # Egress is deliberately NARROW - a bastion forwards SSH and updates
+  # itself; it is not a general egress path. "@vpc" resolves to this
+  # environment's VPC CIDR at plan time (same token as the eks stack).
+  # DNS and NTP need no rules: they use the link-local AWS resolvers,
+  # which security groups do not filter.
+  egress_rules: # default: [] (no egress at all)
+    - description: SSH to instances inside the VPC
+      from_port: 22
+      to_port: 22
+      protocol: tcp
+      cidr_blocks: ["@vpc"]
+    - description: HTTPS out (dnf package updates - AL2023 repos are HTTPS-only)
+      from_port: 443
+      to_port: 443
+      protocol: tcp
+      cidr_blocks: [0.0.0.0/0]
+
+  instances:
+    - name: bastion
+      subnet: public-a        # subnet NAME from the network stack; must be public (SSH comes in from the internet, and there is no NAT)
+      instance_type: t3.micro # default: t3.micro
+      root_volume_size: 20    # default: 20 (GiB)

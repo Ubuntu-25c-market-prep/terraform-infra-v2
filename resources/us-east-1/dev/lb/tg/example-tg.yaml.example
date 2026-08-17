@@ -1,0 +1,26 @@
+# Copy to <service>.yaml to route ALB traffic to a service. Every key not
+# stated here falls back to target_group_defaults in ../config.yaml -
+# except health_check, which replaces the whole map (shallow merge):
+# restate every health_check key you keep.
+#
+# Terraform creates the target group EMPTY. The pods join it via a
+# TargetGroupBinding shipped with the app's Flux release - see ../README.md
+# for the manifest and where to find the ARN.
+name: demo-api
+port: 8080 # the containerPort pods actually listen on (ip targets - no NodePort hop)
+
+routing:
+  # Lower number wins; keep 10 apart so rules can be inserted between.
+  # At least one condition (path_patterns / host_headers) is required.
+  priority: 10
+  path_patterns: ["/api/*"]
+  # host_headers: [api.dev.example.com]
+
+health_check:
+  path: /healthz
+  port: traffic-port
+  interval: 15
+  timeout: 5
+  healthy_threshold: 2
+  unhealthy_threshold: 3
+  matcher: "200-399"

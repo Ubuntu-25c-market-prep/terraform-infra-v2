@@ -1,0 +1,96 @@
+# Every wired value is stated here on purpose (strict lookups in main.tf).
+# Shape follows the org eks template: flat cluster/infra keys up top, the
+# cluster behaviour under eks:. The "# default:" comments show what the
+# cluster module would use if the value were optional - kept for
+# reference, but THIS file is what deploys.
+
+# Immutable: changing the name destroys and recreates the cluster.
+cluster_name: u25c-prod-cluster
+cluster_version: "1.34" # default: null (AWS picks the current version)
+
+# vpc_id / cluster_subnet_ids resolve from the network stack's remote
+# state at plan time while unset - ids never live in this public repo.
+# Uncomment only to pin explicit ids instead.
+# vpc_id:
+# cluster_subnet_ids: # network stack public subnets
+
+# ssh_key_name: # not wired - managed node groups carry no SSH remote access
+# node_jump_server_ssh: # not wired - VPC access goes through the bastion stack
+
+# KMS envelope encryption of Kubernetes Secrets: state an ALIAS
+# (e.g. alias/u25c-prod-eks), never a key id - this file is public. The
+# alias must EXIST before this plans (it is not created by this stack).
+kms_key_id: alias/u25c-prod-eks # default: null (no envelope encryption)
+
+# tags: # extra stack tags (Org/Env/Component/Repo come from default_tags)
+#   Project:
+#   Department:
+#   Category:
+
+eks:
+  create_oidc: true # true when first creating cluster (IRSA - the iam stack needs it)
+  service_ipv4_cidr: 172.20.0.0/16 # default: null (AWS picks); must not overlap the VPC
+
+  # This repo is public: keep this list generic. Narrow it at plan time
+  # in CI, never by committing personal/office IPs.
+  # VPC CIDR only: kubectl works from inside the VPC, not from laptops.
+  public_access_cidrs: # default: [0.0.0.0/0]
+    - 10.1.0.0/16
+    # - # office CIDR
+    # - # ops zone NAT
+
+  # Not in the org template but wired on purpose (strict lookups):
+  endpoint_public_access: true # default: true
+  # true: in-VPC callers (kubelets, CI runners) reach the API without an
+  # internet path. Free; both flags are changeable in place later.
+  endpoint_private_access: true   # default: false
+  enabled_log_types: [api, audit, authenticator] # default: []; prod also logs WHO authenticated
+  # API mode = access entries only; the aws-auth ConfigMap is deprecated.
+  authentication_mode: API # default: API
+  # The CI apply role creates the cluster and keeps admin via this flag.
+  bootstrap_cluster_creator_admin_permissions: true # default: true
+
+  # Extra ingress to the cluster CONTROL PLANE: becomes a dedicated
+  # security group attached to the control plane ENIs ({} = no group).
+  # "@vpc" in cidrs resolves to this environment's VPC CIDR at plan time.
+  cluster_ingress_rules: {} # default: {}
+  # cluster_ingress_rules:
+  #   allow_443_from_internal:
+  #     cidrs:
+  #       - "@vpc"
+  #     from_port: 443
+  #     to_port: 443
+  #     ip_protocol: tcp
+
+  # Extra ingress on the EKS-managed cluster SG - the SHARED SG every
+  # managed node uses. Keyed by rule name. Sources: cidrs (the token
+  # "@vpc" resolves as above) and/or referenced_security_group_ids.
+  # ip_protocol -1 = all traffic (omit the ports); any other protocol
+  # requires from_port/to_port.
+  shared_node_ingress_rules: {} # default: {}
+  # shared_node_ingress_rules:
+  #   allow_all_internal:
+  #     cidrs:
+  #       - "@vpc"
+  #     ip_protocol: -1
+  #   allow_hsm_client:
+  #     referenced_security_group_ids:
+  #       - sg-CHANGE_ME
+  #     from_port: 2223
+  #     to_port: 2225
+  #     ip_protocol: tcp
+  #     description: CloudHSM client ports from the HSM cluster SG
+
+  # Node-pool IAM roles NOT created by this stack (e.g. the Karpenter
+  # node role): each becomes an EC2_LINUX access entry. The exact role
+  # name resolves to an ARN at plan time (no account ids here) and must
+  # EXIST before this plans. EKS auto-creates entries for THIS stack's
+  # managed node groups - never list those. (Entries in iam.yaml with
+  # type: EC2_LINUX work too; this list is the org-template shorthand.)
+  additional_node_pools_iam_roles: [] # default: []
+  # additional_node_pools_iam_roles:
+  #   - CHANGE_ME-karpenter-node
+
+# Node groups and extra security groups do NOT live in this file: each is
+# one SELF-CONTAINED yaml under ng/ resp. sg/ (org format - no defaults
+# layer to merge over). See README.md for both formats.

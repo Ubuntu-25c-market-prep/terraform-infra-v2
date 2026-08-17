@@ -1,0 +1,39 @@
+# Terraform working files - never committed. (.terraform.lock.hcl IS
+# committed on purpose: it pins provider versions for everyone.)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Saved plan files embed a FULL state snapshot (secrets included)
+*.tfplan
+tfplan*
+
+# Local-only variable/override files (would bypass config.yaml review)
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Private keys - the bastion uses SSH key pairs; only PUBLIC halves may
+# ever be committed (ssh_public_key in the bastion config)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+id_ecdsa*
+
+# Editor noise (multi-admin repo: whatever anyone's editor drops)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS noise
+.DS_Store
+Thumbs.db
+Desktop.ini

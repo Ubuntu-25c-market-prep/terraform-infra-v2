@@ -1,0 +1,30 @@
+# Dedicated ELK pool: tainted so only workloads that tolerate
+# dedicated=elk land here (set the toleration in the Flux-managed ELK
+# release). Raise to r-family here if Elasticsearch heap pressure shows up.
+# Self-contained file (org node-group format) - every key deploys from here.
+name: ng-elk-od-us-east-1
+
+instance_type_list:
+  - m5.large
+
+min_size: 2
+desired_size: 3
+max_size: 5
+disk_size: 20 # GiB
+
+k8s_labels:
+  workload: elk
+
+k8s_taints: # format is <key>: <value>:<Effect>
+  dedicated: elk:NoSchedule
+
+public_instance: false
+
+# subnet_ids: # explicit ids would override public_instance - never
+#   - subnet-xxxxxx # committed here (public repo; ids come from remote state)
+
+# tags: # extra per-group tags (Org/Env/... come from provider default_tags)
+#   BaseService: elk-OnDemand
+
+use_al2023_ami: true
+use_on_demand_instance: true

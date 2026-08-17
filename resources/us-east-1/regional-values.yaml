@@ -1,0 +1,6 @@
+region: us-east-1
+
+region_abbr: us1
+
+tags:
+  region: us-east-1

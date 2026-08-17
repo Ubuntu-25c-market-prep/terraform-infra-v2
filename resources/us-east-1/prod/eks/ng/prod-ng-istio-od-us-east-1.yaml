@@ -1,0 +1,31 @@
+# Istio pool: istiod + ingress gateways. Labelled so the mesh components
+# can be pinned here via nodeSelector in the Flux-managed Istio release.
+# Add a k8s_taints entry (like the elk pool) if the mesh should have
+# these nodes to itself.
+# Self-contained file (org node-group format) - every key deploys from here.
+name: ng-istio-od-us-east-1
+
+instance_type_list:
+  - m5.large
+
+min_size: 2
+desired_size: 3
+max_size: 5
+disk_size: 20 # GiB
+
+k8s_labels:
+  workload: istio
+
+# k8s_taints: # none for this pool; format is <key>: <value>:<Effect>
+#   dedicated: istio:NoSchedule
+
+public_instance: false
+
+# subnet_ids: # explicit ids would override public_instance - never
+#   - subnet-xxxxxx # committed here (public repo; ids come from remote state)
+
+# tags: # extra per-group tags (Org/Env/... come from provider default_tags)
+#   BaseService: istio-OnDemand
+
+use_al2023_ami: true
+use_on_demand_instance: true

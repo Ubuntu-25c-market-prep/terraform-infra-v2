@@ -1,0 +1,14 @@
+# Naming follows the org convention: <org>-<env>-<component>[-suffix]
+# e.g. u25c-dev-vpc  (see ops-program/CONVENTIONS.md)
+org: u25c
+
+# The v2 repo name (becomes the Repo default tag on every resource).
+repo: terraform-infra-v2
+
+  # Extra default tags, applied to every resource in every stack via each
+  # provider's default_tags. Add new org-wide tags HERE, not in .tf files.
+  # (Org, Env, Component, Workstream and Repo are derived from the values
+  # above and added automatically.)
+tags:
+  ManagedBy: terraform
+  Workstream: infra # to comply with org-wide tagging rules in ops-program repo

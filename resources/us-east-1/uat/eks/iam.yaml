@@ -1,0 +1,164 @@
+# Cluster identity (org iam.yaml format), next to config.yaml:
+#   access_entries   - who may call the Kubernetes API, keyed by principal
+#   service_accounts - IRSA roles workloads assume, keyed by role name
+#   iam_role_tags    - extra tags on every IRSA role
+# CI identity (GitHub Actions plan/apply roles) is NOT managed in this
+# repo - the workflows only reference it via Actions variables.
+# Non-cluster IAM stays in the iam stack.
+
+# Keys are the principal. The org template keys by full ARN - an arn: key
+# works here verbatim - but ARNs embed the account id and this repo is
+# PUBLIC, so our entries key by a short name and resolve the principal at
+# plan time via role_name_pattern (SSO roles) or role_name instead.
+# EKS auto-creates entries for this stack's managed node groups: never
+# list those. Node-pool roles from OTHER stacks: prefer
+# eks.additional_node_pools_iam_roles in config.yaml (EC2_LINUX shorthand).
+# NOTE: the pattern lookup needs iam:ListRoles on the SSO path - plan via
+# CI or as PlatformAdmin, not locally as PlatformEngineer.
+access_entries:
+  platform-admin:
+    access_entry_type: STANDARD
+    role_name_pattern: AWSReservedSSO_u25c-PlatformAdmin_.*
+    policy_arn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+
+  platform-engineer:
+    access_entry_type: STANDARD
+    role_name_pattern: AWSReservedSSO_u25c-PlatformEngineer_.*
+    policy_arn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+
+  # kubernetes_groups bind the principal to cluster RBAC groups instead
+  # of (or besides) an EKS access policy:
+  #  example-team:
+  #    access_entry_type: STANDARD
+  #    role_name: CHANGE_ME-example-team
+  #    kubernetes_groups:
+  #      - example-team-cluster
+
+  # A full-ARN key, org-template style (private forks only - ARNs embed
+  # the account id and never belong in this public repo):
+  #  arn:aws:iam::<account>:user/cicd:
+  #    access_entry_type: STANDARD
+  #    policy_arn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+
+# IRSA: keyed by role name; the iam module prefixes <org>-<env>-, so
+# "ebs-csi" becomes u25c-uat-ebs-csi - read the exact name from the stack
+# output irsa_role_names and put it in the service account's
+# eks.amazonaws.com/role-arn annotation.
+# namespace_service_account is <namespace>/<service_account>; the role is
+# assumable ONLY by that service account (org rule, Kyverno-enforced).
+# Permissions: attached_policies (managed policy ARNs) and/or policy
+# (inline statements). No roles yet - tool teams: uncomment YOUR block
+# below (or add one like it) and open a PR against this stack; merge the
+# role BEFORE the Flux/Argo release that uses it.
+service_accounts: {}
+
+# --- EBS CSI driver (PlatformApps addon; blocks PVC provisioning) ------
+# service_accounts:
+#   ebs-csi:
+#     namespace_service_account: kube-system/ebs-csi-controller-sa
+#     description: EBS CSI controller - creates/attaches volumes for PVCs
+#     attached_policies:
+#       - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+
+# --- Velero (backup/restore) -------------------------------------------
+# Needs the backup bucket to exist first (s3 stack). Tighten the bucket
+# name before activating.
+#   velero:
+#     namespace_service_account: velero/velero
+#     description: Velero - snapshots EBS volumes, writes backups to S3
+#     policy:
+#       - effect: Allow
+#         actions:
+#           - ec2:DescribeVolumes
+#           - ec2:DescribeSnapshots
+#           - ec2:CreateTags
+#           - ec2:CreateVolume
+#           - ec2:CreateSnapshot
+#           - ec2:DeleteSnapshot
+#         resources: ["*"]
+#       - effect: Allow
+#         actions: [s3:GetObject, s3:DeleteObject, s3:PutObject, s3:AbortMultipartUpload, s3:ListMultipartUploadParts]
+#         resources: ["arn:aws:s3:::CHANGE_ME-velero-bucket/*"]
+#       - effect: Allow
+#         actions: [s3:ListBucket]
+#         resources: ["arn:aws:s3:::CHANGE_ME-velero-bucket"]
+
+# --- AWS Load Balancer Controller, binding-only (lb stack) -------------
+# Terraform owns the ALB, listeners and target groups (../lb); the
+# controller's only job is registering pod IPs via TargetGroupBinding.
+# So the policy is register/deregister + describe - a fraction of the
+# upstream iam_policy.json, which is only needed when the controller may
+# CREATE load balancers. Activate together with the Flux release of the
+# controller, BEFORE the first TargetGroupBinding ships.
+#   aws-lb-controller:
+#     namespace_service_account: kube-system/aws-load-balancer-controller
+#     description: registers pod IPs into Terraform-owned target groups (TargetGroupBinding)
+#     policy:
+#       - effect: Allow
+#         actions:
+#           - elasticloadbalancing:DescribeTargetGroups
+#           - elasticloadbalancing:DescribeTargetGroupAttributes
+#           - elasticloadbalancing:DescribeTargetHealth
+#           - elasticloadbalancing:DescribeLoadBalancers
+#           - elasticloadbalancing:DescribeListeners
+#           - elasticloadbalancing:DescribeRules
+#           - elasticloadbalancing:DescribeTags
+#           - ec2:DescribeInstances
+#           - ec2:DescribeSubnets
+#           - ec2:DescribeSecurityGroups
+#           - ec2:DescribeNetworkInterfaces
+#           - ec2:DescribeVpcs
+#           - ec2:DescribeAvailabilityZones
+#         resources: ["*"] # describe calls do not support resource-level ARNs
+#       - effect: Allow
+#         actions: [elasticloadbalancing:RegisterTargets, elasticloadbalancing:DeregisterTargets]
+#         resources: ["*"] # target group ARNs embed the account id - keep them out of this public file
+
+# --- external-dns (Utils) ----------------------------------------------
+#   external-dns:
+#     namespace_service_account: external-dns/external-dns
+#     description: external-dns - manages Route53 records for services/ingresses
+#     policy:
+#       - effect: Allow
+#         actions: [route53:ChangeResourceRecordSets]
+#         resources: ["arn:aws:route53:::hostedzone/*"] # narrow to your zone id
+#       - effect: Allow
+#         actions: [route53:ListHostedZones, route53:ListResourceRecordSets, route53:ListTagsForResource]
+#         resources: ["*"]
+
+# --- cert-manager (Utils; only if DNS01 via Route53) -------------------
+#   cert-manager:
+#     namespace_service_account: cert-manager/cert-manager
+#     description: cert-manager - Route53 DNS01 challenges for certificates
+#     policy:
+#       - effect: Allow
+#         actions: [route53:GetChange]
+#         resources: ["arn:aws:route53:::change/*"]
+#       - effect: Allow
+#         actions: [route53:ChangeResourceRecordSets, route53:ListResourceRecordSets]
+#         resources: ["arn:aws:route53:::hostedzone/*"] # narrow to your zone id
+#       - effect: Allow
+#         actions: [route53:ListHostedZonesByName]
+#         resources: ["*"]
+
+# --- AWS Bedrock (workload access to models) ---------------------------
+#   bedrock-invoke:
+#     namespace_service_account: CHANGE_ME-app-namespace/CHANGE_ME-app-sa
+#     description: invoke Bedrock models from in-cluster workloads
+#     policy:
+#       - effect: Allow
+#         actions: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+#         resources: ["*"] # narrow to specific model ARNs
+
+# Karpenter (Scaling team) is NOT just an IRSA role. The
+# karpenter.sh/discovery tags are deliberately NOT applied yet (another
+# cluster's Karpenter runs in this account - no discovery tags until
+# this infra is ready); those tags, the controller IRSA role, node
+# role/instance profile and SQS interruption queue land as their own
+# infra change when the team migrates.
+
+# Extra tags on every IRSA role (Org/Env/Component/Repo and the layered
+# ManagedBy/Workstream tags come from the provider's default_tags already).
+iam_role_tags: {}
+# iam_role_tags:
+#   CreatedBy: Terraform

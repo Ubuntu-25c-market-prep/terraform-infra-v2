@@ -1,0 +1,31 @@
+# Dedicated monitoring pool: Prometheus/Grafana - Prometheus memory grows
+# with the metric count. Tainted so only workloads tolerating
+# dedicated=monitoring land here (set the toleration in the Flux-managed
+# kube-prometheus-stack release).
+# Self-contained file (org node-group format) - every key deploys from here.
+name: ng-monitoring-od-us-east-1
+
+instance_type_list:
+  - t3.large # headroom for Prometheus memory
+
+min_size: 1
+desired_size: 2
+max_size: 3
+disk_size: 20 # GiB
+
+k8s_labels:
+  workload: monitoring
+
+k8s_taints: # format is <key>: <value>:<Effect>
+  dedicated: monitoring:NoSchedule
+
+public_instance: false
+
+# subnet_ids: # explicit ids would override public_instance - never
+#   - subnet-xxxxxx # committed here (public repo; ids come from remote state)
+
+# tags: # extra per-group tags (Org/Env/... come from provider default_tags)
+#   BaseService: monitoring-OnDemand
+
+use_al2023_ami: true
+use_on_demand_instance: true

@@ -1,0 +1,20 @@
+# Each role is one file under config/*.yaml (drop the .example suffix to
+# activate), merged over role_defaults below. Two role types:
+#
+#   service - assumed by an AWS service (eks.amazonaws.com, ...)
+#   irsa    - assumed by ONE Kubernetes service account; namespace and
+#             service_account are REQUIRED (the trust policy is conditioned on
+#             system:serviceaccount:<ns>:<sa> - org rule, Kyverno-enforced)
+#
+# Optional per-role fields: description, max_session_duration (seconds),
+# permissions_boundary (policy ARN), policy_arns (managed), policy (inline).
+# A role must grant something: policy_arns and/or policy.
+#
+# NOTE: CI identity (the GitHub Actions plan/apply roles) is NOT managed
+# in this repo - the workflows only reference it via Actions variables.
+iam:
+  role_defaults:
+    type: service # default: service
+    services: []
+    policy_arns: []
+    policy: []

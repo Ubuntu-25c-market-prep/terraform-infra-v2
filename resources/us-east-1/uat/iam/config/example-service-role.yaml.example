@@ -1,0 +1,8 @@
+# Service role: assumable by an AWS service principal.
+name: example-service
+type: service
+description: Example service role - copy, rename, adjust
+services:
+  - ec2.amazonaws.com # REQUIRED: at least one principal
+policy_arns:
+  - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore

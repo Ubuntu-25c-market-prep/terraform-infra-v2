@@ -1,0 +1,7 @@
+# ECR repository: one file per repo. Only "name" is required.
+name: app # REQUIRED: lowercase alphanumeric with . _ / -
+# image_tag_mutability: IMMUTABLE   # override the env default if needed
+# scan_on_push: true
+# force_delete: false               # true lets terraform destroy delete a non-empty repo
+# untagged_expiry_days: 14
+# max_image_count: 50               # careful: counts tagged images too

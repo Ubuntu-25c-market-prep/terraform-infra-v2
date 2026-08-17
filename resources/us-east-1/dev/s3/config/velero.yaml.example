@@ -1,0 +1,10 @@
+# Velero backup bucket (Velero team: activate together with the velero
+# IRSA role in eks/iam.yaml - the role's policy must reference this
+# bucket's final name: u25c-dev-velero-<account-id>).
+name: velero
+
+# Only set keys that differ from bucket_defaults:
+lifecycle_rules:
+  - id: expire-old-backups
+    expiration_days: 90
+    noncurrent_expiration_days: 30

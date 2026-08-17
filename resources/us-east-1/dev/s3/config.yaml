@@ -1,0 +1,9 @@
+# Each bucket is one file under config/*.yaml (drop the .example suffix to
+# activate), merged over bucket_defaults below. Bucket names come out as
+# <org>-<env>-<name>-<account-id> - the account id is resolved at plan
+# time, NEVER committed (public repo).
+s3:
+  bucket_defaults:
+    versioning: true      # default: true
+    force_destroy: false  # default: false - true lets terraform destroy a NON-EMPTY bucket
+    lifecycle_rules: []   # default: []  ({id, prefix?, expiration_days?, noncurrent_expiration_days?})

@@ -1,0 +1,100 @@
+# --- network design, on purpose -------------------------------------
+# Two public subnets (internet-facing: load balancers) and two private
+# subnets across two AZs. NO NAT: no environment pays for a NAT gateway
+# (~$33/month each + per-GiB processing), so the private subnets have NO
+# internet egress at all - anything that must reach the internet lives
+# in the public subnets instead. The free S3 GATEWAY endpoint keeps S3 -
+# including ECR image layers - reachable from every subnet.
+#
+# Org vpc template shape: flat vpc keys, ONE subnets map, and named
+# route_tables that DRIVE subnet behaviour - a subnet is PUBLIC when its
+# attached table has enable_igw: true. CIDRs compose as
+# <cidr_prefix>.<cidr_suffix>: the VPC is 10.2.0.0/16 and subnet
+# suffixes hang off the same prefix, so an env can re-prefix wholesale.
+# Every wired value is stated here on purpose (strict lookups in main.tf).
+
+name: u25c-uat-vpc # org convention <org>-<env>-<component>; prefixes every network resource name
+cidr_prefix: "10.2" # quoted - bare 10.2 is YAML for a number
+cidr_suffix: 0.0/16
+instance_tenancy: default                   # default: "default"
+enable_dns_hostnames: true                  # default: true
+enable_dns_support: true                    # default: true
+enable_network_address_usage_metrics: false # default: false
+
+# Not in the org template but wired on purpose (strict lookups):
+map_public_ip_on_launch: true # default: true
+
+# NO subnet-role discovery tags on purpose: another EKS cluster runs in
+# this account, and kubernetes.io/role/*elb tags would let ANY cluster's
+# LB controller (or Istio's gateway NLBs) auto-place load balancers in
+# these subnets before this infra is ready. Re-add when going live:
+#   public_subnet_tags:  { kubernetes.io/role/elb: "1" }
+#   private_subnet_tags: { kubernetes.io/role/internal-elb: "1" }
+public_subnet_tags: {}  # default: {}
+private_subnet_tags: {} # default: {}
+
+subnets:
+  public-a:
+    availability_zone: us-east-1a
+    cidr_suffix: 0.0/24
+  public-b:
+    availability_zone: us-east-1b
+    cidr_suffix: 1.0/24
+  private-a:
+    availability_zone: us-east-1a
+    cidr_suffix: 2.0/24
+  private-b:
+    availability_zone: us-east-1b
+    cidr_suffix: 3.0/24
+
+# Route tables drive the subnets (org format), and their keys become the
+# deployed tables' Name tags:
+#   enable_igw: true      -> attached subnets are PUBLIC
+#   nat_gateway: <subnet> -> private egress via a NAT hosted in that
+#                            public subnet (commented below - no NAT,
+#                            see the cost note up top)
+#   enable_endpoint_route -> S3 gateway endpoint on the table. Wired
+#                            all-or-nothing: any true = endpoint on every
+#                            table (the vpc module has no per-table knob).
+# enable_peering_route, vpc_endpoint, custom_route and attach_to_igw
+# exist in the org template but are NOT wired - no peering, firewall
+# GWLBE or edge routing in this design (yet).
+route_tables:
+  uat-route-us-east-1-public:
+    enable_igw: true
+    enable_endpoint_route: true
+    attach_to_subnets:
+      - public-a
+      - public-b
+  uat-route-us-east-1a-private:
+    enable_igw: false
+    # nat_gateway: public-a # no NAT - uncomment (same host here and below = ONE shared NAT) to restore private egress
+    enable_endpoint_route: true
+    attach_to_subnets:
+      - private-a
+  uat-route-us-east-1b-private:
+    enable_igw: false
+    # nat_gateway: public-a
+    enable_endpoint_route: true
+    attach_to_subnets:
+      - private-b
+
+# --- org template sections NOT wired in this design (placeholders) ----
+# peering_requesters:
+#   <name>:
+#     account_id:
+#     vpc_id:
+#     region:
+#     cidr:
+# peering_accepters:
+#   <name>:
+#     vpc_id:
+#     cidr:
+# transit_gateway_attachment:
+#   default:
+#     tgw_id:
+#     subnets: []
+#     cidr_list: []
+# vpn_gateway:
+#   create_vpn_gateway: false
+#   cidrs: []

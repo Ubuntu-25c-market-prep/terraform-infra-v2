@@ -1,0 +1,114 @@
+# DISABLED ON PURPOSE: the whole workflow is commented out so that no
+# plan or apply can run while the code is still being built.
+# To re-enable, remove the leading '# ' from every line below this header.
+#
+# name: Terraform Apply
+
+# # In one line: merge to main -> find the stack folder in the merged commits'
+# #              messages -> run "terraform apply" in that folder.
+# #
+# # Commit message convention (on the branch commits):
+# #   [<action>][<stack>] <short description> - Path: /<stack-folder>
+# #   e.g. "[update][network] added a private subnet - Path: /resources/us-east-1/dev/network"
+# #
+# # The workflow scans every commit the merge brought in (newest first) and
+# # uses the first one that names a valid folder. The merge commit's own
+# # message does not matter, so ANY merge style works (merge commit, squash,
+# # rebase) - the branch commits already carry the convention.
+# #
+# # Full walkthrough of every block: .github/workflows/README.md
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# permissions:
+#   contents: read    # checkout the repo
+#   id-token: write   # let AWS verify this job via OIDC (no stored AWS keys)
+
+# env:
+#   AWS_REGION: us-east-1   # must match regional-values.yaml
+
+# jobs:
+#   apply:
+#     runs-on: ubuntu-latest
+#     # OPTIONAL: uncomment to require a manual approval in GitHub before apply runs.
+#     # The apply role already trusts this environment name.
+#     # (Settings > Environments > create "aws-apply" with required reviewers)
+#     # environment: aws-apply
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v5
+#         with:
+#           fetch-depth: 0   # full history, needed to read the merged commits' messages
+
+#       - name: Read stack folder from the merged commits
+#         id: target
+#         run: |
+#           # The commit main pointed at BEFORE this merge; everything between
+#           # it and HEAD is what the merge brought in.
+#           base="${{ github.event.before }}"
+#           if ! git cat-file -e "$base" 2>/dev/null; then
+#             base="$(git rev-parse HEAD~1)"   # fallback: force-push / unknown base
+#           fi
+
+#           # Walk the merged commits newest-first and use the first message
+#           # whose "Path: /..." names a valid folder. The [tag] is a typo
+#           # cross-check only: a bare tag cannot identify the environment.
+#           dir=""
+#           for sha in $(git rev-list "$base..HEAD"); do
+#             msg="$(git log -1 --format=%B "$sha")"
+#             path="$(printf '%s' "$msg" | grep -oiE 'path: *[^[:space:]]+' | head -1 | sed -E 's/^[Pp]ath: *//; s|^/||; s|/$||')"
+#             tag="$(printf '%s' "$msg" | sed -nE 's/^\[[^]]+\]\[([^]]+)\].*/\1/p')"
+
+#             if [ -z "$path" ] || [ ! -d "$path" ]; then
+#               continue   # this commit has no usable folder, try the next one
+#             fi
+#             dir="$path"
+
+#             # Warn if the [tag] does not match the stack folder's name
+#             case "$(basename "$dir")" in
+#               "$tag"*) ;;
+#               *) echo "::warning::Bracket tag '$tag' does not match stack folder '$(basename "$dir")' - possible typo in commit $sha" ;;
+#             esac
+#             break
+#           done
+
+#           if [ -z "$dir" ]; then
+#             echo "::error::No merged commit names a valid stack folder. Expected e.g. '[update][network] ... - Path: /resources/us-east-1/dev/network'"
+#             exit 1
+#           fi
+
+#           # Child modules are not runnable roots - point the Path at the
+#           # stack that consumes the module instead.
+#           case "$dir" in
+#             modules/*)
+#               echo "::error::'$dir' is a child module, not a stack - name the stack that uses it (e.g. Path: /resources/us-east-1/dev/network)"
+#               exit 1
+#               ;;
+#           esac
+
+#           echo "Terraform will run in: $dir"
+#           echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+#       - name: Configure AWS credentials (OIDC)
+#         uses: aws-actions/configure-aws-credentials@v5
+#         with:
+#           role-to-assume: ${{ vars.AWS_ROLE_ARN_APPLY }}   # apply role - set this Actions variable to an existing or new role ARN; not managed in this repo (trusts main branch / aws-apply environment only)
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: "1.12.2"   # PLACEHOLDER: pin to your version (>= 1.10 for S3 native state locking)
+
+#       - name: Terraform Init
+#         working-directory: ${{ steps.target.outputs.dir }}
+#         run: terraform init -input=false
+#         # PLACEHOLDER: same backend config as the plan workflow when ready
+#         # (state key = <repo-name>/<stack-path>/terraform.tfstate - mirrors the repo layout)
+
+#       - name: Terraform Apply
+#         working-directory: ${{ steps.target.outputs.dir }}
+#         run: terraform apply -input=false -auto-approve
