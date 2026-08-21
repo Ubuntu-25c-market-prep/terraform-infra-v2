@@ -67,6 +67,7 @@ merge-before-release rule as IRSA roles in the eks stack.
 
 ## What this stack is NOT for
 
-L4/NLB (static IPs, PrivateLink), multi-cluster routing, API Gateway /
-Global Accelerator edges - out of scope for v1. The TargetGroupBinding
+L4 traffic (TCP/UDP, TLS passthrough, static IPs, PrivateLink) - that is
+the `nlb` stack. Multi-cluster routing and API Gateway / Global
+Accelerator edges are out of scope for v1. The TargetGroupBinding
 split is the piece that makes the multi-cluster path cheap later.

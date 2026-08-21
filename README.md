@@ -17,6 +17,8 @@ environment, all values in YAML, CI driven by commit messages.
 │   ├── ec2/               # SSM-only instances (no SSH) - for the jump host
 │   ├── lb/                # Terraform-owned ALB + ip target groups; pods
 │   │                      # join via TargetGroupBinding (never Ingress)
+│   ├── nlb/               # Terraform-owned NLB (L4: TCP/UDP/TLS) + ip target
+│   │                      # groups, one listener per group; same binding model
 │   └── eks/
 │       ├── cluster/       # Cluster, OIDC, access entries (SSO patterns)
 │       ├── node-groups/   # Managed node groups
@@ -33,8 +35,10 @@ environment, all values in YAML, CI driven by commit messages.
         │   ├── s3/                  # one YAML per bucket in config/
         │   ├── eks/                 # ONE stack: cluster + node groups (ng/)
         │   │                        # + extra SGs (sg/) + identity (iam.yaml)
-        │   └── lb/                  # ALB in front of the cluster - one
-        │                            # YAML per target group in tg/
+        │   ├── lb/                  # ALB in front of the cluster - one
+        │   │                        # YAML per target group in tg/
+        │   └── nlb/                 # NLB for L4 traffic (mesh ingress, TCP/
+        │                            # UDP) - one YAML per target group in tg/
         ├── uat/                     # same shape, uat values
         └── prod/                    # same shape, prod values
 ```
@@ -64,7 +68,7 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
   YAML; a missing key fails the plan instead of silently using a module
   default. `# default:` comments are reference only.
 - **Per-item files**: `ecr/config/`, `s3/config/`, `iam/config/`,
-  `eks/ng/`, `eks/sg/`, `lb/tg/` — one YAML file per repository / bucket /
+  `eks/ng/`, `eks/sg/`, `lb/tg/`, `nlb/tg/` — one YAML file per repository / bucket /
   role / node group / security group / target group, merged over that
   stack's `*_defaults`. `.example` files are inactive documentation.
 - **Cluster identity lives in `eks/iam.yaml`** — access entries (SSO
@@ -126,5 +130,5 @@ terraform plan
 
 The eks stack's access-entry lookup needs IAM read on the SSO path -
 it works in CI and as PlatformAdmin; PlatformEngineer is denied locally.
-Apply order within an env: network first (subnets before nodes), then eks;
-ecr/s3/iam are independent.
+Apply order within an env: network first (subnets before nodes), then eks,
+then lb/nlb (they read both states); ecr/s3/iam are independent.
