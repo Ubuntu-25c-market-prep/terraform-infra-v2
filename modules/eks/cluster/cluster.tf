@@ -1,9 +1,3 @@
-data "aws_kms_alias" "secrets" {
-  count = var.secrets_kms_key_alias == null ? 0 : 1
-
-  name = var.secrets_kms_key_alias
-}
-
 resource "aws_eks_cluster" "this" {
   name     = var.name
   role_arn = aws_iam_role.cluster.arn
@@ -28,14 +22,13 @@ resource "aws_eks_cluster" "this" {
     service_ipv4_cidr = var.service_ipv4_cidr
   }
 
-  # Envelope encryption of Kubernetes Secrets, only when an alias is given.
-  # The alias (not the key id) is what config carries - this repo is public.
+  # Envelope encryption of Kubernetes Secrets, only when a key is given.
   dynamic "encryption_config" {
-    for_each = var.secrets_kms_key_alias == null ? [] : [1]
+    for_each = var.secrets_kms_key_arn == null ? [] : [1]
 
     content {
       provider {
-        key_arn = data.aws_kms_alias.secrets[0].target_key_arn
+        key_arn = var.secrets_kms_key_arn
       }
       resources = ["secrets"]
     }
@@ -46,4 +39,17 @@ resource "aws_eks_cluster" "this" {
   })
 
   depends_on = [aws_iam_role_policy_attachment.cluster]
+
+  # Checked at plan (not validate) so a REPLACE-ME placeholder in config
+  # fails the plan without breaking validate.
+  lifecycle {
+    precondition {
+      condition     = alltrue([for id in var.subnet_ids : can(regex("^subnet-[0-9a-f]{8}([0-9a-f]{9})?$", id))])
+      error_message = "subnet_ids must be subnet ids (subnet-<hex>) - replace the placeholders with the network stack outputs."
+    }
+    precondition {
+      condition     = var.secrets_kms_key_arn == null || can(regex("^arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-f-]{36}$", var.secrets_kms_key_arn))
+      error_message = "secrets_kms_key_arn '${coalesce(var.secrets_kms_key_arn, "null")}' is not a complete KMS key ARN - paste the real key ARN (arn:aws:kms:<region>:<12-digit account>:key/<uuid>)."
+    }
+  }
 }

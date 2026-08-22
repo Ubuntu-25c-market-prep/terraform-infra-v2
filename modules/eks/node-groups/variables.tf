@@ -9,8 +9,9 @@ variable "cluster_name" {
 }
 
 variable "subnet_ids" {
-  description = "Subnets the node groups launch instances in (a group's own subnet_ids, when set, wins over this)"
+  description = "Fallback subnets for groups that state no subnet_ids of their own; null = every group must state them"
   type        = list(string)
+  default     = null
 }
 
 variable "node_groups" {
@@ -62,6 +63,25 @@ variable "node_groups" {
     ])
     error_message = "Taint effect must be NO_SCHEDULE, PREFER_NO_SCHEDULE or NO_EXECUTE."
   }
+}
+
+variable "ssh_key_name" {
+  description = "EC2 key pair for SSH to the nodes (remote_access); null = no SSH. Set at creation only - changing it replaces the node groups."
+  type        = string
+  default     = null
+}
+
+variable "ssh_source_cidrs" {
+  description = "CIDRs allowed to SSH to the nodes (the jump server, e.g. 10.0.0.10/32). Required with ssh_key_name - without a source AWS opens :22 to the internet."
+  type        = list(string)
+  default     = []
+  nullable    = false
+}
+
+variable "vpc_id" {
+  description = "VPC of the nodes - hosts the SSH source security group; required with ssh_key_name"
+  type        = string
+  default     = null
 }
 
 variable "addons" {

@@ -1,5 +1,5 @@
 # Latest Amazon Linux 2023 resolved at plan time - AMI ids are region- and
-# time-specific and never belong in config (public repo, multi-env).
+# time-specific and never belong in config (multi-env).
 data "aws_ssm_parameter" "al2023" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
@@ -35,4 +35,12 @@ resource "aws_instance" "this" {
   tags = merge(var.tags, {
     Name = "${var.name}-${each.value.name}"
   })
+
+  # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
+  lifecycle {
+    precondition {
+      condition     = can(regex("^subnet-[0-9a-f]{8}([0-9a-f]{9})?$", each.value.subnet_id)) && can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id))
+      error_message = "Instance ${each.key}: subnet_id (subnet-<hex>) and vpc_id (vpc-<hex>) must be real ids - replace the placeholders with the network stack outputs."
+    }
+  }
 }

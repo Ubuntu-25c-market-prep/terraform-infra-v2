@@ -64,7 +64,9 @@ merge-before-release rule as IRSA roles in the eks stack.
   IRSA role - see the commented `aws-lb-controller` block in
   `../eks/iam.yaml`. Because Terraform creates the LB resources, the role
   is register/deregister + describe, a fraction of the upstream policy.
-- The `network` and `eks` stacks applied (remote state).
+- The `network` and `eks` stacks applied, and their output ids
+  (`vpc_id`, subnet ids, `cluster_security_group_id`) pasted into
+  `config.yaml` - this stack reads no remote state.
 
 ## What this stack is NOT for
 
@@ -72,3 +74,23 @@ L4 traffic (TCP/UDP, TLS passthrough, static IPs, PrivateLink) - that is
 the `nlb` stack. Multi-cluster routing and API Gateway / Global
 Accelerator edges are out of scope for v1. The TargetGroupBinding
 split is the piece that makes the multi-cluster path cheap later.
+
+## Keys (`config.yaml`)
+
+| Key | Meaning |
+|---|---|
+| `name` | becomes `<org>-<env>-<name>`; also prefixes target group names (32-char limit overall) |
+| `vpc_id`, `subnet_ids` | network stack outputs. Public subnets for an internet-facing ALB, private for an internal one - must agree with `internal`. One per AZ, at least two |
+| `backend_security_group_id` | the eks stack's `cluster_security_group_id` - pod ENIs carry it under the VPC CNI; the module opens it to the ALB per target port |
+| `internal` | `true` = no public IPs (scheme internal) |
+| `ingress_cidrs` | who may reach the listeners (:80, :443); narrow for internal/admin ALBs |
+| `ip_address_type` | `ipv4` or `dualstack` |
+| `idle_timeout` | seconds a connection may sit idle before the ALB closes it; raise for slow endpoints or quiet WebSockets. Keep the pods' keep-alive timeout longer than this to avoid sporadic 502s |
+| `drop_invalid_header_fields` | strip HTTP headers with invalid names before forwarding - closes request-smuggling gaps; keep `true` |
+| `deletion_protection` | the ALB's DNS name is an external contract - a delete severs every record pointing at it. `true` in prod; destroy = flip, apply, then destroy |
+| `certificate_arn` | ACM certificate for the HTTPS `:443` listener (`:80` then redirects); `null` = plain HTTP only |
+| `ssl_policy` | AWS predefined TLS policy name (`aws elbv2 describe-ssl-policies`); the default allows TLS 1.2 + 1.3 |
+| `target_group_defaults` | applied to every `target_groups` entry; the merge is shallow - an entry that sets `health_check` replaces the whole map |
+| `target_groups[].name`, `port` | required; `port` is the containerPort (ip targets - no NodePort hop) |
+| `target_groups[].routing` | listener rule: `priority` (unique, lower wins) and at least one of `path_patterns` / `host_headers` |
+| `protocol`, `deregistration_delay`, `health_check.*` | pod-side protocol; connection-draining seconds when a target leaves (pair with the pod's `terminationGracePeriodSeconds`); health check path/port/thresholds |

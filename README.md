@@ -24,7 +24,7 @@ environment, all values in YAML, CI driven by commit messages.
 │       ├── node-groups/   # Managed node groups
 │       └── security-groups/
 └── resources/
-    ├── global-values.yaml           # org, repo, org-wide tags
+    ├── global-values.yaml           # org, repo, shared tags
     └── us-east-1/
         ├── regional-values.yaml     # region + regional tags
         ├── dev/                     # one complete set of stacks per env
@@ -73,11 +73,13 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
   over that stack's `*_defaults`; a commented example entry under each
   array is the template. The eks stack is the exception: node groups and
   security groups stay one file each under `eks/ng/` and `eks/sg/`
-  (org format, `.example` files are inactive documentation).
-- **Cluster identity lives in `eks/iam.yaml`** — access entries (SSO
-  role-name patterns, never ARNs) and IRSA roles for workloads, with
-  ready-to-uncomment blocks for ebs-csi, Velero, external-dns,
-  cert-manager and Bedrock.
+  (`.example` files are inactive documentation).
+- **Cluster identity lives in `eks/iam.yaml`** — access entries (keyed by
+  ARN, or by a short name resolved via SSO role-name pattern) and IRSA
+  roles for workloads (full names, policies by ARN), with
+  ready-to-uncomment blocks for ebs-csi, the LB controller, Velero,
+  external-dns, cert-manager and Bedrock. The customer-managed policies
+  they reference are declared in the `iam-roles` stack's `policies` array.
 - EKS **addons are not managed here** — Flux CD owns them (see
   `resources/*/*/eks/README.md`).
 
@@ -122,9 +124,12 @@ running init with the real backend requires passing the exact same key.
 - **State bucket and the CI OIDC roles** — referenced only via Actions
   variables (existing roles, modified ones, or new ones all work), so no
   pipeline change can touch CI's own identity or the state.
-- **Account ids, IAM ARNs, personal IPs** — this repo is public. KMS keys
-  are referenced by alias, SSO principals by name pattern, bucket names
-  get the account id appended at plan time.
+- **Personal/office IPs and secrets** (private keys, tokens). Resource
+  ids and ARNs (VPC, subnets, security groups, KMS keys, ACM
+  certificates, the OIDC provider) ARE committed: stacks read no remote
+  state, each states the ids it needs in its `config.yaml`. Where a
+  lookup is still offered (KMS by alias, SSO roles by name pattern) it is
+  a convenience, not a rule.
 
 ## Local runs
 
@@ -136,5 +141,26 @@ terraform plan
 
 The eks stack's access-entry lookup needs IAM read on the SSO path -
 it works in CI and as PlatformAdmin; PlatformEngineer is denied locally.
-Apply order within an env: network first (subnets before nodes), then eks,
-then alb/nlb (they read both states); ecr/s3/iam-roles are independent.
+
+## Apply order and id hand-off
+
+Stacks never read each other's state. Ids flow between them through
+`config.yaml`, pasted from the previous stack's outputs - once per env,
+and again only if the resource is recreated:
+
+1. `network` → outputs `vpc_id`, `public_subnet_ids`, `private_subnet_ids`
+2. paste into `eks/config.yaml` (+ `eks/ng/*.yaml`), `bastion/config.yaml`,
+   `alb/config.yaml`, `nlb/config.yaml`
+3. `eks` → outputs `cluster_security_group_id`, `oidc_provider_arn`,
+   `oidc_issuer_url`
+4. paste into `alb`/`nlb` (`backend_security_group_id`) and `iam-roles`
+   (`oidc_*`, only needed for irsa roles)
+4b. IRSA policies: `iam-roles` (`policies` array) → output `policy_arns` →
+   paste into `eks/iam.yaml` `attached_policies`, then apply `eks`
+5. `bastion`, `alb`, `nlb`, `iam-roles` in any order; `ecr`/`s3` anytime
+6. SSH to nodes: `bastion` → output `private_ips` → paste as a /32 into
+   `eks/config.yaml` `node_jump_server_ssh` (`ssh_key_name` is already the
+   bastion key pair) **before** the node groups are first created - remote
+   access is creation-only, so `bastion` applies before `eks`
+
+`REPLACE-ME` placeholders fail the plan on purpose until real ids are in.

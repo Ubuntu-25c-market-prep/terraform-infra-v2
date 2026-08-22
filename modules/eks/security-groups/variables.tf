@@ -14,6 +14,7 @@ variable "security_groups" {
     name              = string
     description       = optional(string, "Managed by Terraform")
     attach_to_cluster = optional(bool, false)
+    tags              = optional(map(string), {}) # extra per-group tags, merged over the module-wide tags
     ingress = optional(list(object({
       description     = optional(string)
       from_port       = number
@@ -93,7 +94,7 @@ variable "security_groups" {
         ])
       ])
     ])
-    error_message = "Every cidr_blocks entry must be a valid IPv4 CIDR (an unresolved token like @vpc means the stack did not substitute it)."
+    error_message = "Every cidr_blocks entry must be a valid IPv4 CIDR."
   }
 }
 

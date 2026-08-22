@@ -119,7 +119,7 @@ variable "node_ingress_rules" {
         for c in r.cidr_blocks : can(cidrhost(c, 0))
       ])
     ])
-    error_message = "Every cidr_blocks entry must be a valid IPv4 CIDR (an unresolved token like @vpc means the stack did not substitute it)."
+    error_message = "Every cidr_blocks entry must be a valid IPv4 CIDR."
   }
 
   validation {
@@ -132,10 +132,15 @@ variable "node_ingress_rules" {
   }
 }
 
-variable "secrets_kms_key_alias" {
-  description = "KMS key alias for envelope encryption of Secrets (e.g. alias/u25c-dev-eks); null disables"
+variable "secrets_kms_key_arn" {
+  description = "KMS key ARN for envelope encryption of Secrets; null disables"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.secrets_kms_key_arn == null || startswith(var.secrets_kms_key_arn, "arn:aws:kms:")
+    error_message = "secrets_kms_key_arn must be a KMS key ARN (arn:aws:kms:<region>:<account>:key/<id>), not a key id or alias."
+  }
 }
 
 variable "authentication_mode" {
@@ -162,7 +167,7 @@ variable "access_entries" {
   type = list(object({
     name              = string
     type              = optional(string, "STANDARD") # STANDARD | EC2_LINUX (node roles this stack does not create, e.g. Karpenter)
-    role_name         = optional(string)             # exact IAM role name, resolved at plan time (keeps account-id ARNs out of the public repo)
+    role_name         = optional(string)             # exact IAM role name, resolved at plan time (an arn: key works too)
     role_name_pattern = optional(string)             # IAM role name regex, resolved at plan time - searches SSO roles only
     principal_arn     = optional(string)             # alternative: explicit principal
     policy            = optional(string)             # e.g. AmazonEKSClusterAdminPolicy, AmazonEKSAdminPolicy, AmazonEKSEditPolicy, AmazonEKSViewPolicy; STANDARD only

@@ -1,24 +1,13 @@
-# Each repository is one entry of the repositories array below, merged
-# over repository_defaults.
-#
-# CAVEAT: max_image_count counts ALL images, tagged releases included - a
-# busy repo can expire images you still deploy. Size it generously or unset
-# it per repo and rely on untagged_expiry_days only.
+# One entry per repository under repositories, merged over repository_defaults.
 ecr:
   repository_defaults:
-    image_tag_mutability: IMMUTABLE # default: MUTABLE; IMMUTABLE here - deployed tags can never be overwritten
-    scan_on_push: true            # default: true
-    force_delete: false           # default: false
+    image_tag_mutability: IMMUTABLE # immutable - deployed tags can never be overwritten
+    scan_on_push: true
+    force_delete: false           # true lets terraform destroy delete a non-empty repo
     untagged_expiry_days: 14      # module default: null (never expire)
-    max_image_count: 100          # module default: null (never expire); roomier than dev/uat - prod keeps more history
+    max_image_count: 100           # module default: null; counts tagged images too - size generously
 
-  # One entry per repository; keys not stated fall back to repository_defaults.
   repositories: []
-  #
-  # Example entry - uncomment and adjust. Only "name" is required.
-  # - name: app # REQUIRED: lowercase alphanumeric with . _ / -
-  #   # image_tag_mutability: IMMUTABLE   # override the env default if needed
-  #   # scan_on_push: true
-  #   # force_delete: false               # true lets terraform destroy delete a non-empty repo
-  #   # untagged_expiry_days: 14
-  #   # max_image_count: 50               # careful: counts tagged images too
+  # repositories:
+  #   - name: app # lowercase alphanumeric with . _ / -
+  #     image_tag_mutability: IMMUTABLE # any repository_defaults key can be overridden

@@ -25,7 +25,7 @@ resource "aws_lb_listener" "this" {
   lifecycle {
     precondition {
       condition     = each.value.listener.protocol != "TLS" || local.tls_enabled
-      error_message = "Target group ${each.key} declares a TLS listener but no certificate is set (certificate_domain in config.yaml)."
+      error_message = "Target group ${each.key} declares a TLS listener but no certificate is set (certificate_arn in config.yaml)."
     }
   }
 }

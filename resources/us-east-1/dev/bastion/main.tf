@@ -19,30 +19,13 @@ locals {
   tags = local.config.tags
 }
 
-data "terraform_remote_state" "network" {
-  backend = "local"
-
-  config = {
-    path = "${path.module}/../network/terraform.tfstate"
-  }
-}
-
-locals {
-  # Rule CIDRs differ per environment. The token "@vpc" in any cidr_blocks
-  # entry resolves to THIS environment's VPC CIDR (from the network stack)
-  # at plan time - same convention as the eks stack.
-  egress_rules_resolved = [
-    for rule in local.config.egress_rules : merge(rule, {
-      cidr_blocks = [for c in rule.cidr_blocks : c == "@vpc" ? data.terraform_remote_state.network.outputs.vpc_cidr_block : c]
-    })
-  ]
-}
-
+# No remote state: vpc_id and each instance's subnet_id are stated in
+# config.yaml, pasted from the network stack's outputs.
 module "bastion" {
   source = "../../../../modules/bastion"
 
   name   = local.name_prefix
-  vpc_id = data.terraform_remote_state.network.outputs.vpc_id
+  vpc_id = local.config.vpc_id
 
   # Strict lookups on purpose: every value must be stated in config.yaml,
   # so a missing or misspelled key fails the plan instead of silently
@@ -51,16 +34,14 @@ module "bastion" {
   key_name              = local.config.key_name
   ssh_public_key        = local.config.ssh_public_key
   ssh_ingress_cidrs     = local.config.ssh_ingress_cidrs
-  egress_rules          = local.egress_rules_resolved
+  egress_rules          = local.config.egress_rules
 
-  # Subnets are referenced by NAME - the id lookup fails the plan when the
-  # name does not exist in the network stack's public subnets. Public on
-  # purpose: SSH comes in from the internet, and with nat_gateway = none
-  # a private instance would have no route out either.
+  # subnet_id must be a PUBLIC subnet: SSH comes in from the internet, and
+  # with nat_gateway = none a private instance would have no route out.
   instances = [
     for instance in local.config.instances : {
       name             = instance.name
-      subnet_id        = data.terraform_remote_state.network.outputs.public_subnet_ids[instance.subnet]
+      subnet_id        = instance.subnet_id
       instance_type    = instance.instance_type
       root_volume_size = instance.root_volume_size
     }

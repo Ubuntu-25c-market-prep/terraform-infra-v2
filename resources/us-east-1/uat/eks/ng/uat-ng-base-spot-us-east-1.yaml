@@ -1,6 +1,7 @@
 # Base spot pool: STATELESS, interruption-tolerant workloads only - spot
 # is a cost lever, not a home for anything stateful.
-# Self-contained file (org node-group format) - every key deploys from here.
+# Self-contained file (template node-group format) - every key deploys
+# from here. Final EKS name: <org>-<env>-<name> (u25c-uat-ng-base-spot-us-east-1).
 name: ng-base-spot-us-east-1
 
 instance_type_list: # >1 type: better spot availability
@@ -13,15 +14,17 @@ max_size: 4
 disk_size: 20 # GiB
 
 k8s_labels:
-  capacity: spot # workloads must opt IN to interruptible nodes
+  capacity: spot # so workloads can opt in/out of interruptible nodes
 
 # k8s_taints: # none for this pool; format is <key>: <value>:<Effect>
 #   capacity: spot:NoSchedule
 
-public_instance: false
+public_instance: false # template key - informational, placement is subnet_ids below
 
-# subnet_ids: # explicit ids would override public_instance - never
-#   - subnet-xxxxxx # committed here (public repo; ids come from remote state)
+# From the network stack's outputs (private_subnet_ids / public_subnet_ids)
+subnet_ids:
+  - subnet-REPLACE-ME-private-a
+  - subnet-REPLACE-ME-private-b
 
 # tags: # extra per-group tags (Org/Env/... come from provider default_tags)
 #   BaseService: base-spot

@@ -8,7 +8,7 @@ resource "aws_iam_role_policy_attachment" "this" {
 resource "aws_iam_role_policy" "inline" {
   for_each = { for name, role in local.roles : name => role if length(role.policy) > 0 }
 
-  name = "${var.name}-${each.key}"
+  name = var.name == null ? each.key : "${var.name}-${each.key}"
   role = aws_iam_role.this[each.key].id
 
   policy = jsonencode({

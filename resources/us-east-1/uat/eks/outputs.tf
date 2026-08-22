@@ -49,6 +49,11 @@ output "attached_security_group_ids" {
 }
 
 output "irsa_role_names" {
-  description = "Map of config role name to full IAM role name for IRSA roles"
+  description = "Map of iam.yaml key to IAM role name for IRSA roles (identical - keys are the full names)"
   value       = module.irsa.role_names
+}
+
+output "irsa_role_arns" {
+  description = "Map of iam.yaml key to IAM role ARN - the value for the service account's eks.amazonaws.com/role-arn annotation"
+  value       = module.irsa.role_arns
 }

@@ -86,8 +86,8 @@ several ports (e.g. 80 and 443 on an ingress gateway) gets one
   pod terminates it. This is the normal mode for an Istio gateway or
   anything doing mTLS.
 - `listener.protocol: TLS` terminates at the NLB with the certificate
-  resolved from `certificate_domain` in `config.yaml` and forwards plain
-  TCP to the pod. A TLS listener without a `certificate_domain` fails the
+  `certificate_arn` from `config.yaml` and forwards plain TCP to the pod.
+  A TLS listener without a `certificate_arn` fails the
   plan.
 
 ## Prerequisites
@@ -96,7 +96,9 @@ several ports (e.g. 80 and 443 on an ingress gateway) gets one
   IRSA role - see the commented `aws-lb-controller` block in
   `../eks/iam.yaml`. Because Terraform creates the LB resources, the role
   is register/deregister + describe, a fraction of the upstream policy.
-- The `network` and `eks` stacks applied (remote state).
+- The `network` and `eks` stacks applied, and their output ids
+  (`vpc_id`, subnet ids, `cluster_security_group_id`) pasted into
+  `config.yaml` - this stack reads no remote state.
 
 ## What this stack is NOT for
 
@@ -104,3 +106,25 @@ HTTP-level routing (paths, hosts, redirects, WAF) - that is the `alb`
 stack. Elastic IP allocation and PrivateLink endpoint services are not
 wired yet; the security-group-on-NLB design is what keeps both cheap to
 add later.
+
+## Keys (`config.yaml`)
+
+| Key | Meaning |
+|---|---|
+| `name` | becomes `<org>-<env>-<name>`; also prefixes target group names (32-char limit overall) |
+| `vpc_id`, `subnet_ids` | network stack outputs. Public subnets for an internet-facing NLB, private for an internal one - must agree with `internal`. One per AZ, at least two |
+| `backend_security_group_id` | the eks stack's `cluster_security_group_id` - pod ENIs carry it under the VPC CNI; the module opens it to the NLB SG per target port |
+| `internal` | `true` = no public IPs (scheme internal) |
+| `ingress_cidrs` | who may reach the listener ports |
+| `ip_address_type` | `ipv4` or `dualstack` |
+| `cross_zone_load_balancing` | spread traffic across all AZs' targets; NLBs default it off, and with one replica per AZ an AZ losing its pod would otherwise black-hole its share |
+| `deletion_protection` | the NLB's DNS name is an external contract - `true` in prod; destroy = flip, apply, then destroy |
+| `certificate_arn` | ACM certificate for `listener.protocol: TLS` entries (NLB terminates TLS, forwards TCP). `null` = TLS passes through to the pod |
+| `ssl_policy` | AWS predefined TLS policy name for TLS listeners |
+| `target_group_defaults` | applied to every `target_groups` entry; shallow merge - an entry that sets `health_check` replaces the whole map. `listener` has no defaults |
+| `protocol` | `TCP`, `UDP` or `TCP_UDP` on the target group |
+| `preserve_client_ip` | pods see the real client source IP (always on for UDP, never for TLS listeners). Hairpin caveat: an in-VPC client landing on a pod on its own node cannot connect |
+| `proxy_protocol_v2` | send PROXY v2 headers - only if the pod-side proxy parses them |
+| `deregistration_delay` | connection-draining seconds when a target leaves; pair with the pod's `terminationGracePeriodSeconds` |
+| `health_check.*` | `TCP` probes the port only; `HTTP`/`HTTPS` also check `path` + `matcher`; `timeout` < `interval` |
+| `target_groups[].listener` | one listener per entry (`port`, `protocol`; `alpn_policy` for TLS). Listener ports must be unique - an NLB listener forwards to exactly one target group |

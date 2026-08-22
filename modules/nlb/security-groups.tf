@@ -10,6 +10,14 @@ resource "aws_security_group" "nlb" {
   tags = merge(var.tags, {
     Name = var.name
   })
+
+  # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
+  lifecycle {
+    precondition {
+      condition     = can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id)) && can(regex("^sg-[0-9a-f]{8}([0-9a-f]{9})?$", var.backend_security_group_id))
+      error_message = "vpc_id (vpc-<hex>) and backend_security_group_id (sg-<hex>) must be real ids - replace the placeholders with the network / eks stack outputs."
+    }
+  }
 }
 
 # One rule per listener port, IP protocol and allowed CIDR. An NLB has no

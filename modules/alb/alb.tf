@@ -13,4 +13,12 @@ resource "aws_lb" "this" {
   tags = merge(var.tags, {
     Name = var.name
   })
+
+  # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
+  lifecycle {
+    precondition {
+      condition     = alltrue([for id in var.subnet_ids : can(regex("^subnet-[0-9a-f]{8}([0-9a-f]{9})?$", id))])
+      error_message = "subnet_ids must be subnet ids (subnet-<hex>) - replace the placeholders with the network stack outputs."
+    }
+  }
 }

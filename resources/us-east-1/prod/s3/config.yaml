@@ -1,23 +1,15 @@
-# Each bucket is one entry of the buckets array below, merged over
-# bucket_defaults. Bucket names come out as
-# <org>-<env>-<name>-<account-id> - the account id is resolved at plan
-# time, NEVER committed (public repo).
+# One entry per bucket under buckets, merged over bucket_defaults.
+# Bucket names come out as <org>-<env>-<name>-<account-id>.
 s3:
   bucket_defaults:
-    versioning: true      # default: true
-    force_destroy: false  # default: false - true lets terraform destroy a NON-EMPTY bucket
-    lifecycle_rules: []   # default: []  ({id, prefix?, expiration_days?, noncurrent_expiration_days?})
+    versioning: true
+    force_destroy: false  # true lets terraform destroy a NON-EMPTY bucket
+    lifecycle_rules: []   # [{id, prefix?, expiration_days?, noncurrent_expiration_days?}]
 
-  # One entry per bucket; keys not stated fall back to bucket_defaults.
   buckets: []
-  #
-  # Example entry (Velero backup bucket - uncomment together with the velero
-  # IRSA role in eks/iam.yaml - the role's policy must reference this
-  # bucket's final name: u25c-prod-velero-<account-id>).
-  # - name: velero
-  #
-  #   # Only set keys that differ from bucket_defaults:
-  #   lifecycle_rules:
-  #     - id: expire-old-backups
-  #       expiration_days: 90
-  #       noncurrent_expiration_days: 30
+  # buckets:
+  #   - name: velero # Velero backups - activate together with the velero IRSA role (eks/iam.yaml)
+  #     lifecycle_rules:
+  #       - id: expire-old-backups
+  #         expiration_days: 90
+  #         noncurrent_expiration_days: 30

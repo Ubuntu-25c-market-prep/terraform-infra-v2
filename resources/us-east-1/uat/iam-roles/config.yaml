@@ -1,47 +1,102 @@
-# Each role is one entry of the roles array below, merged over
-# role_defaults. Two role types:
-#
-#   service - assumed by an AWS service (eks.amazonaws.com, ...)
-#   irsa    - assumed by ONE Kubernetes service account; namespace and
-#             service_account are REQUIRED (the trust policy is conditioned on
-#             system:serviceaccount:<ns>:<sa> - org rule, Kyverno-enforced)
-#
-# Optional per-role fields: description, max_session_duration (seconds),
-# permissions_boundary (policy ARN), policy_arns (managed), policy (inline).
-# A role must grant something: policy_arns and/or policy.
-#
-# NOTE: CI identity (the GitHub Actions plan/apply roles) is NOT managed
-# in this repo - the workflows only reference it via Actions variables.
+# Non-cluster IAM: standalone policies (policies) and roles (roles), each
+# merged over role_defaults. Role types: service (AWS principals) or
+# irsa (ONE Kubernetes service account). README.md "Keys".
 iam:
+  oidc_provider_arn: null # eks stack outputs; required only for irsa roles
+  oidc_issuer_url: null
+
+  # Customer-managed policies, named <org>-<env>-<name>. Attach by ARN
+  # (policy_arns here, attached_policies in eks/iam.yaml) - read the ARN
+  # from the policy_arns output after apply.
+  policies: []
+  # policies:
+  #   - name: AWSLoadBalancerControllerBindingPolicy # binding-only: Terraform owns the LBs
+  #     statements:
+  #       - actions:
+  #           - elasticloadbalancing:DescribeTargetGroups
+  #           - elasticloadbalancing:DescribeTargetGroupAttributes
+  #           - elasticloadbalancing:DescribeTargetHealth
+  #           - elasticloadbalancing:DescribeLoadBalancers
+  #           - elasticloadbalancing:DescribeListeners
+  #           - elasticloadbalancing:DescribeRules
+  #           - elasticloadbalancing:DescribeTags
+  #           - ec2:DescribeInstances
+  #           - ec2:DescribeSubnets
+  #           - ec2:DescribeSecurityGroups
+  #           - ec2:DescribeNetworkInterfaces
+  #           - ec2:DescribeVpcs
+  #           - ec2:DescribeAvailabilityZones
+  #         resources: ["*"]
+  #       - actions:
+  #           - elasticloadbalancing:RegisterTargets
+  #           - elasticloadbalancing:DeregisterTargets
+  #         resources: ["*"] # or the target group ARNs from the alb/nlb outputs
+  #   - name: VeleroPolicy
+  #     statements:
+  #       - actions:
+  #           - ec2:DescribeVolumes
+  #           - ec2:DescribeSnapshots
+  #           - ec2:CreateTags
+  #           - ec2:CreateVolume
+  #           - ec2:CreateSnapshot
+  #           - ec2:DeleteSnapshot
+  #         resources: ["*"]
+  #       - actions:
+  #           - s3:GetObject
+  #           - s3:DeleteObject
+  #           - s3:PutObject
+  #           - s3:AbortMultipartUpload
+  #           - s3:ListMultipartUploadParts
+  #         resources: ["arn:aws:s3:::u25c-uat-velero-<account-id>/*"]
+  #       - actions:
+  #           - s3:ListBucket
+  #         resources: ["arn:aws:s3:::u25c-uat-velero-<account-id>"]
+  #   - name: ExternalDnsPolicy
+  #     statements:
+  #       - actions:
+  #           - route53:ChangeResourceRecordSets
+  #         resources: ["arn:aws:route53:::hostedzone/*"] # narrow to your zone id
+  #       - actions:
+  #           - route53:ListHostedZones
+  #           - route53:ListResourceRecordSets
+  #           - route53:ListTagsForResource
+  #         resources: ["*"]
+  #   - name: CertManagerRoute53Policy
+  #     statements:
+  #       - actions:
+  #           - route53:GetChange
+  #         resources: ["arn:aws:route53:::change/*"]
+  #       - actions:
+  #           - route53:ChangeResourceRecordSets
+  #           - route53:ListResourceRecordSets
+  #         resources: ["arn:aws:route53:::hostedzone/*"] # narrow to your zone id
+  #       - actions:
+  #           - route53:ListHostedZonesByName
+  #         resources: ["*"]
+  #   - name: BedrockInvokePolicy
+  #     statements:
+  #       - actions:
+  #           - bedrock:InvokeModel
+  #           - bedrock:InvokeModelWithResponseStream
+  #         resources: ["*"] # narrow to specific model ARNs
+
   role_defaults:
-    type: service # default: service
+    type: service
     services: []
     policy_arns: []
     policy: []
 
-  # One entry per role; keys not stated fall back to role_defaults.
   roles: []
-  #
-  # IRSA role: assumable ONLY by this service account in this namespace.
-  # - name: example-irsa
-  #   type: irsa
-  #   description: Example IRSA role - copy, rename, adjust
-  #   namespace: kube-system      # REQUIRED for irsa
-  #   service_account: example-sa # REQUIRED for irsa
-  #   policy_arns:
-  #     - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-  #   policy:
-  #     - effect: Allow
-  #       actions:
-  #         - sqs:ReceiveMessage
-  #       resources:
-  #         - "*"
-  #
-  # Service role: assumable by an AWS service principal.
-  # - name: example-service
-  #   type: service
-  #   description: Example service role - copy, rename, adjust
-  #   services:
-  #     - ec2.amazonaws.com # REQUIRED: at least one principal
-  #   policy_arns:
-  #     - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+  # roles:
+  #   - name: example-service # service role: assumed by an AWS service principal
+  #     services: [ec2.amazonaws.com]
+  #     policy_arns: ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
+  #   - name: example-irsa # irsa role: assumable ONLY by this service account
+  #     type: irsa
+  #     namespace: kube-system
+  #     service_account: example-sa
+  #     policy_arns: ["arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"]
+  #     policy: # inline statements, besides or instead of policy_arns
+  #       - effect: Allow
+  #         actions: ["sqs:ReceiveMessage"]
+  #         resources: ["*"]

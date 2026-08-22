@@ -1,7 +1,7 @@
 # EKS stack (cluster + node groups + security groups + identity)
 
 One stack owns the cluster, its managed node groups, any extra security
-groups, and cluster identity: `iam.yaml` (org format) holds
+groups, and cluster identity: `iam.yaml` (template format) holds
 `access_entries` — who may call the Kubernetes API, keyed by principal;
 an `arn:` key is used verbatim, any other key is a name resolved at plan
 time from `role_name`/`role_name_pattern` (SSO) — plus `service_accounts`
@@ -11,12 +11,15 @@ inline `policy`) and `iam_role_tags` (extra tags on the IRSA roles).
 `config.yaml` keeps only infrastructure settings, in the org eks
 template shape: flat cluster/infra keys
 (`cluster_name`, `cluster_version`, `kms_key_id`, ...) up top and the
-cluster behaviour under `eks:`. Unset `vpc_id`/`cluster_subnet_ids`
-resolve from the network stack's remote state (ids never live in this
-public repo); `kms_key_id` holds an ALIAS by org rule for the same
-reason. `ssh_key_name`/`node_jump_server_ssh` are commented and not
-wired - managed node groups carry no SSH remote access. IRSA roles get the cluster's OIDC provider wired directly, no
-remote state. Non-cluster IAM stays in the separate `iam-roles/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
+cluster behaviour under `eks:`. `vpc_id`/`cluster_subnet_ids` are the
+network stack's output ids, pasted in after that stack is applied - this
+stack reads no remote state; `kms_key_id` is a key id, ARN or alias.
+`ssh_key_name` (an EC2 key pair, e.g. the bastion stack's
+`key_pair_name`) plus `node_jump_server_ssh` (the bastion's private IP
+as a /32) enable SSH to the nodes from the bastion only; both `null` =
+no remote access. IRSA roles are named exactly as their `iam.yaml` key
+(`irsa-<org>-<env>-k8s-<workload>`) and get the cluster's OIDC provider
+wired directly. Non-cluster IAM stays in the separate `iam-roles/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
 managed here — Flux CD owns them after the cluster is up. EKS still
 installs its default self-managed versions at creation, so nodes join
 before Flux runs.
@@ -24,14 +27,14 @@ before Flux runs.
 ## Extra security groups
 
 Each file in `sg/` is one extra security group, **self-contained** in the
-org format — there is no defaults layer in `config.yaml`. Rules are maps
+template format — there is no defaults layer in `config.yaml`. Rules are maps
 keyed by rule name under `ingress_rules` / `egress_rules`; a rule's
 sources are `cidrs` and/or `referenced_security_group_ids`, and omitting
-`from_port`/`to_port`/`ip_protocol` means all traffic. `"@vpc"` in
-`cidrs` resolves to this environment's VPC CIDR at plan time, and
+`from_port`/`to_port`/`ip_protocol` means all traffic (CIDRs are
+written literally - each environment has its own files), and
 `attach_to_cluster: true` adds the group to the control plane ENIs.
-`cidrs_ipv6` and per-group `tags` are not wired (the module carries
-neither yet). `.example` files are inactive documentation — copy, drop
+Per-group `tags` are merged over the stack tags. `cidrs_ipv6` is not
+wired (the VPC is IPv4-only). `.example` files are inactive documentation — copy, drop
 the suffix, adjust. With no active files, no extra groups are created
 (EKS still creates its own cluster security group).
 
@@ -41,8 +44,7 @@ the suffix, adjust. With no active files, no extra groups are created
 **EKS-managed cluster security group** — the SG every managed node
 actually uses — for traffic that must reach the nodes directly (peered
 ranges, an internal appliance, another cluster). Keyed by rule name;
-sources are `cidrs` (`"@vpc"` resolves as above) and/or
-`referenced_security_group_ids`. `ip_protocol: -1` means all traffic and
+sources are `cidrs` and/or `referenced_security_group_ids`. `ip_protocol: -1` means all traffic and
 must omit the ports. An empty map (the default) leaves only EKS's own
 rules. Its sibling `eks.cluster_ingress_rules` (same rule format) becomes
 a dedicated extra security group attached to the **control plane ENIs**
@@ -53,7 +55,7 @@ instead.
 Node pools whose IAM role is created elsewhere (e.g. the Karpenter node
 role) join the cluster via `eks.additional_node_pools_iam_roles` in
 `config.yaml` — a plain list of role names, each becoming an `EC2_LINUX`
-access entry (the org-template shorthand) — or via a full entry in
+access entry (the template shorthand) — or via a full entry in
 `iam.yaml`. Either way the exact IAM role name is resolved to an ARN at
 plan time, and no `policy` is set — EKS grants node permissions itself.
 Managed node groups from THIS stack still get their entries
@@ -62,21 +64,24 @@ auto-created; never list those.
 ## Node groups
 
 Each file in `ng/` is one managed node group, **self-contained** in the
-org format — there is no `node_group_defaults` layer in `config.yaml`;
+template format — there is no `node_group_defaults` layer in `config.yaml`;
 every key deploys from the file itself. The keys:
 
 - `instance_type_list` — instance types (more than one helps spot pools)
 - `use_on_demand_instance` — `true` = ON_DEMAND, `false` = SPOT
-- `use_al2023_ami` — `true` = AL2023 (the only value we deploy)
+- `use_al2023_ami` — must be `true` (AL2 is end-of-support; `false` fails
+  the plan). The AMI architecture follows `instance_type_list`: Graviton
+  families (`t4g`, `m7g`, `c7gn`, …) get the ARM AMI, anything else x86;
+  one architecture per group
 - `min_size` / `desired_size` / `max_size` / `disk_size` — scaling + disk
 - `k8s_labels` — node labels
 - `k8s_taints` — map of `<key>: <value>:<Effect>` with the Kubernetes
   effect spelling (e.g. `dedicated: elk:NoSchedule`); translated to the
   EKS API values in `main.tf`
-- `public_instance` — `false` = this environment's private subnets,
-  `true` = public; resolved from the network stack at plan time
-- `subnet_ids` — explicit subnet ids override `public_instance`; kept
-  commented (ids never live in this public repo)
+- `subnet_ids` — the subnets the group launches in (network stack
+  output ids, pasted in after that stack is applied)
+- `public_instance` — template key, informational only; `subnet_ids`
+  decides public vs private
 - `tags` — extra per-group tags (org tags come from `default_tags`)
 
 `name:` in each file is the filename minus the env prefix; the module
@@ -120,3 +125,38 @@ to itself.
 Copy an existing file in `ng/`, set a unique `name:`, and state the full
 profile — files are self-contained, nothing is inherited. No `.tf`
 changes needed — the stack discovers files via `fileset()`.
+
+## Keys (`config.yaml`)
+
+| Key | Meaning |
+|---|---|
+| `cluster_name` | immutable - changing it destroys and recreates the cluster |
+| `cluster_version` | Kubernetes version; `null` = AWS picks the current one |
+| `vpc_id`, `cluster_subnet_ids` | network stack outputs; the control-plane ENIs live in these subnets (private - they carry no public IP and need no internet route); both AZs must be covered |
+| `ssh_key_name` | EC2 key pair for SSH to the nodes - the bastion stack's `key_pair_name`; `null` = no SSH |
+| `node_jump_server_ssh` | the bastion's private IP as a `/32` (bastion output `private_ips`) - the only address allowed on :22. Required with `ssh_key_name`. Both are **creation-only**: changing them replaces the node groups, so paste before the first eks apply |
+| `kms_key_id` | KMS key ARN for envelope encryption of Secrets; `null` = none |
+| `tags` | extra tags on everything in this stack (Org/Env/Component/Repo come from `default_tags`) |
+| `eks.create_oidc` | create the IAM OIDC provider - required for IRSA |
+| `eks.service_ipv4_cidr` | Kubernetes service CIDR; must not overlap the VPC |
+| `eks.public_access_cidrs` | who may reach the public API endpoint; uat/prod restrict to the VPC CIDR. Narrow further at plan time in CI rather than committing office IPs |
+| `eks.endpoint_public_access` / `endpoint_private_access` | API endpoint exposure; private = in-VPC callers (kubelets, bastion) reach the API without an internet path. Free, changeable in place |
+| `eks.enabled_log_types` | control-plane logs to CloudWatch |
+| `eks.authentication_mode` | `API` = access entries only (the aws-auth ConfigMap is deprecated) |
+| `eks.bootstrap_cluster_creator_admin_permissions` | the identity that creates the cluster (CI apply role) keeps admin |
+| `eks.cluster_ingress_rules` | extra ingress to the control-plane ENIs; becomes one extra security group. Rule format as in `sg/` |
+| `eks.shared_node_ingress_rules` | extra ingress on the EKS-managed cluster SG (the SG every node uses): peered ranges, appliances, another cluster. `ip_protocol: -1` = all traffic, omit the ports |
+| `eks.additional_node_pools_iam_roles` | role names of node pools created elsewhere (Karpenter); each becomes an `EC2_LINUX` access entry. Never list this stack's own node groups |
+
+## Identity (`iam.yaml`)
+
+| Section | Keyed by | Notes |
+|---|---|---|
+| `access_entries` | principal: a full ARN (used verbatim) or a short name resolved via `role_name` (exact) / `role_name_pattern` (regex, for SSO roles whose names carry a random suffix) | `access_entry_type` `STANDARD` or `EC2_LINUX`; grant with `policy_arn` (an EKS access policy, `scope`/`namespaces` optional) and/or `kubernetes_groups` (cluster RBAC). EKS auto-creates entries for this stack's node groups - never list those; node pools from other stacks go in `eks.additional_node_pools_iam_roles`. The pattern lookup needs `iam:ListRoles` - plan via CI or as PlatformAdmin |
+| `service_accounts` | the **full** IRSA role name `irsa-<org>-<env>-k8s-<workload>`, used verbatim | `namespace_service_account: <ns>/<sa>` - the role is assumable only by that service account; `attached_policies` (ARNs: AWS-managed verbatim, customer-managed from the iam-roles stack `policy_arns` output); `description` optional. Put the role ARN (output `irsa_role_arns`) in the SA's `eks.amazonaws.com/role-arn` annotation. Merge the role before the Flux release that uses it |
+| `iam_role_tags` | - | extra tags on every IRSA role |
+
+Karpenter is not just an IRSA role (discovery tags, node role/instance
+profile, SQS interruption queue) - it lands as its own change; the
+`karpenter.sh/discovery` tags stay absent until then because another
+cluster's Karpenter runs in this account.

@@ -35,7 +35,15 @@ resource "aws_security_group" "this" {
     }
   }
 
-  tags = merge(var.tags, {
+  tags = merge(var.tags, each.value.tags, {
     Name = "${var.name}-${each.value.name}"
   })
+
+  # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
+  lifecycle {
+    precondition {
+      condition     = can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id))
+      error_message = "vpc_id must be a VPC id (vpc-<hex>) - replace the placeholder with the network stack output."
+    }
+  }
 }

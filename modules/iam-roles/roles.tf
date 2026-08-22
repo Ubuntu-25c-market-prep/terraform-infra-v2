@@ -53,7 +53,7 @@ data "aws_iam_policy_document" "assume" {
 resource "aws_iam_role" "this" {
   for_each = local.roles
 
-  name               = "${var.name}-${each.value.name}"
+  name               = var.name == null ? each.value.name : "${var.name}-${each.value.name}"
   description        = each.value.description
   assume_role_policy = data.aws_iam_policy_document.assume[each.key].json
 
@@ -61,7 +61,7 @@ resource "aws_iam_role" "this" {
   permissions_boundary = each.value.permissions_boundary
 
   tags = merge(var.tags, {
-    Name = "${var.name}-${each.value.name}"
+    Name = var.name == null ? each.value.name : "${var.name}-${each.value.name}"
   })
 
 }

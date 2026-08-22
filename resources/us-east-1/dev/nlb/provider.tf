@@ -12,8 +12,8 @@ terraform {
 provider "aws" {
   region = local.config.region
 
-  # Applied to every resource. The five org-mandated tags (FinOps showback
-  # and Kyverno enforcement depend on them) plus the v2 addition: Component.
+  # Applied to every resource. Org/Env/Component/Repo plus the shared tags from
+  # the layered *-values.yaml files.
   default_tags {
     # Common tags (ManagedBy, Workstream, ...) come from the layered
     # *-values.yaml files - add new default tags there, not here.

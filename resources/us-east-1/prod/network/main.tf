@@ -7,7 +7,7 @@ locals {
     local.global_values,
     local.region_values,
     local.env_values,
-    # config.yaml follows the org vpc template: flat keys, one subnets
+    # config.yaml follows the vpc template: flat keys, one subnets
     # map, named route_tables (see the comments in config.yaml).
     yamldecode(file("${path.module}/config.yaml")),
     # tags exist in every layer; a plain merge keeps only the last map, so
@@ -23,7 +23,7 @@ locals {
   # CIDRs compose as <cidr_prefix>.<cidr_suffix> - VPC and subnets alike.
   vpc_cidr = "${local.config.cidr_prefix}.${local.config.cidr_suffix}"
 
-  # Each subnet's route table NAME: the org format attaches tables to
+  # Each subnet's route table NAME: the template format attaches tables to
   # subnets via attach_to_subnets, and EXACTLY ONE table must list each
   # subnet - one() fails the plan on zero or several matches.
   subnet_route_table_name = {
