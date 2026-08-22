@@ -26,10 +26,10 @@ For example:
 ```
 
 The folder comes from the `Path: /...` part — the full path from the repo
-root, environment included. The second bracket tag (`[network]`) is a
-**typo cross-check**: a warning is printed when it doesn't match the stack
-folder's name. It never picks the folder itself — a bare tag like `eks`
-can't say *which environment's* eks stack is meant.
+root, environment included. The bracket tags (`[update][network]`) are for
+humans reading the log; the workflows don't parse them. A bare tag like
+`eks` couldn't pick the folder anyway — it can't say *which environment's*
+eks stack is meant.
 
 The rest of this doc explains every block, top to bottom. The two files are ~90% identical, so the shared blocks are explained once and the differences are called out at the end.
 
@@ -88,6 +88,24 @@ env:
 
 The AWS region, hardcoded at the top of each file so it is visible at a glance. It is not sensitive, and it must match `region:` in `resources/us-east-1/regional-values.yaml`. If the team ever deploys to more regions, this is the value to move into an Actions variable or derive from the Path.
 
+### `concurrency`
+
+```yaml
+# plan
+concurrency:
+  group: plan-${{ github.ref }}
+  cancel-in-progress: true
+
+# apply
+concurrency:
+  group: apply
+```
+
+Only one run per group at a time.
+
+- **Plan**: the group is the branch name, and a newer run cancels the older one — push twice quickly and only the latest plan runs. The old plan was for code that no longer exists.
+- **Apply**: one group for everything and nothing is cancelled — two merges close together apply one after the other instead of fighting over the state lock.
+
 ---
 
 ## The steps
@@ -103,20 +121,26 @@ The AWS region, hardcoded at the top of each file so it is visible at a glance. 
 
 ### Read stack folder from commit message (`id: target`)
 
-The step that decides *where* Terraform runs. In plain English:
+The step that decides *where* Terraform runs. Three shell lines:
 
-1. **Extract the Path** — `Path: /resources/us-east-1/dev/network` → `resources/us-east-1/dev/network` (case-insensitive, leading/trailing slashes stripped).
-2. **Check it is a real folder** — a missing or misspelled Path fails with a clear error showing the expected format. There is no fallback: the Path is the single source of truth.
-3. **Typo cross-check** — the second bracket tag is compared against the folder's *name* (`[network]` vs `.../dev/network` → ok). On mismatch a warning is printed; the Path still wins.
-4. **Refuse child modules** — `Path: /modules/...` fails: modules are not runnable roots, the commit must name the stack that consumes the module.
-5. **Publish the result** — `echo "dir=$dir" >> "$GITHUB_OUTPUT"` makes the folder available to later steps as `steps.target.outputs.dir`.
+```bash
+dir="$(echo "$COMMIT_MSG" | grep -o 'Path: */[^ ]*' | head -1 | sed 's|Path: */||')"
+if [ ! -d "$dir" ] || [[ "$dir" != resources/* ]]; then ... exit 1; fi
+echo "dir=$dir" >> "$GITHUB_OUTPUT"
+```
+
+In plain English:
+
+1. **Extract the Path** — `grep` finds the first `Path: /...` in the message, `sed` drops the `Path: /` prefix: `Path: /resources/us-east-1/dev/network` → `resources/us-east-1/dev/network`.
+2. **Check it is a real stack folder** — it must exist *and* be under `resources/`. A missing or misspelled Path, or `Path: /modules/...` (modules are not runnable roots), fails with an error showing the expected format. There is no fallback: the Path is the single source of truth.
+3. **Publish the result** — writing `dir=...` to `$GITHUB_OUTPUT` makes the folder available to later steps as `steps.target.outputs.dir`.
 
 Two details worth knowing:
 
 - In the plan workflow, the commit message is passed in through `env:` rather than pasted into the script — that avoids shell-injection issues from `'` or `$` characters in commit messages.
 - On a push with several commits, GitHub's `head_commit` is the **last** commit — that one's message decides (plan workflow only; see below for apply).
 
-**The apply workflow scans the merged commits instead.** A merge commit's own message is usually GitHub's default "Merge pull request #12 …", which has no `Path:`. So the apply version of this step doesn't read one message — it walks *every commit the merge brought in* (`git rev-list before..HEAD`, newest first) and uses the first message whose Path names a valid folder. Since the branch commits already carry the convention (the plan workflow ran on them), **any merge style works** — merge commit, squash, or rebase. This is also why the apply workflow's checkout uses `fetch-depth: 0`: it needs git history, not just the tip commit.
+**The apply workflow reads the merged commits instead.** A merge commit's own message is usually GitHub's default "Merge pull request #12 …", which has no `Path:`. So the apply version feeds the same three lines with `git log --format=%B before..HEAD` — the messages of *every commit the merge brought in*, newest first — and the first `Path:` found wins. Since the branch commits already carry the convention (the plan workflow ran on them), **any merge style works** — merge commit, rebase, or squash (for squash, keep GitHub's default squash message "Pull request title and commit details" so the branch messages survive into the squash commit). This is also why the apply workflow's checkout uses `fetch-depth: 0`: it needs git history, not just the tip commit.
 
 ### Configure AWS credentials (OIDC)
 
@@ -149,6 +173,15 @@ The role ARNs are not sensitive, so they live in **Actions variables** (`vars.`,
 
 Installs the Terraform CLI on the runner at a pinned version, so CI always runs the same version regardless of runner image updates.
 
+### Terraform Format (plan only)
+
+```yaml
+- name: Terraform Format
+  run: terraform fmt -check -recursive modules resources
+```
+
+Fails the plan if any `.tf` file isn't formatted the way `terraform fmt` would write it. Runs on the whole repo (it's instant), before anything touches AWS. Fix locally with `terraform fmt -recursive`.
+
 ### Terraform steps
 
 ```yaml
@@ -173,7 +206,8 @@ The commented `-backend-config` block under `init` is a **placeholder** for the 
 | Trigger | push to any branch except `main` | push to `main` |
 | Where the folder comes from | the pushed head commit's message | the merged commits' messages, newest first (any merge style works) |
 | Checkout | shallow (default) | `fetch-depth: 0` — needs history to read the merged commits |
-| Terraform | `init`, `validate`, `plan` | `init`, `apply -auto-approve` |
+| Concurrency | per branch, newer run cancels older | one global group, runs queue, never cancelled |
+| Terraform | `fmt -check`, `init`, `validate`, `plan` | `init`, `apply -auto-approve` |
 | Extra safety | — | commented-out `environment: aws-apply` — uncomment it (and create the environment with required reviewers) to add a manual approval gate before every apply |
 
 ## Rules the team must follow
@@ -182,7 +216,8 @@ Because commit messages are the source of truth, the workflows only work when th
 
 1. **Every commit that should trigger Terraform needs the convention** — `[<action>][<stack>] <description> - Path: /<stack-folder>`, with the FULL path from the repo root (environment included). Merge however you like: apply finds the convention in the branch commits, so the merge commit message doesn't matter.
 2. **One stack per commit/PR** — a message can only name one folder, and the apply uses the first valid one it finds. Pushing changes for two stacks to one branch means only one gets applied — silently.
-3. **Changes to `modules/` name the consuming stack** — `Path: /modules/...` is refused; plan the change through a stack that sources the module (and remember the other environments consume it too).
+3. **The Path must match the files you changed** — the workflows check that the Path is a real stack folder, not that it's the folder you edited. A Path naming `dev` with changes in `prod` plans and applies dev (no changes) and leaves prod unapplied, without any error. Read your own Path before pushing.
+4. **Changes to `modules/` name the consuming stack** — `Path: /modules/...` is refused; plan the change through a stack that sources the module (and remember the other environments consume it too).
 
 ## Required repository configuration
 

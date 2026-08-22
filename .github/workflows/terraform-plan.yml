@@ -4,15 +4,12 @@
 #
 # name: Terraform Plan
 
-# # In one line: push to a feature branch -> read the stack folder from the
-# #              commit message -> run "terraform plan" in that folder.
+# # Push to a feature branch -> read the stack folder from the commit
+# # message -> run "terraform plan" in that folder.
 # #
 # # Commit message convention:
 # #   [<action>][<stack>] <short description> - Path: /<stack-folder>
 # #   e.g. "[update][network] added a private subnet - Path: /resources/us-east-1/dev/network"
-# #
-# # The folder comes from the "Path: /..." part. The second [tag] is a
-# # cross-check: a warning is printed when it does not match the folder name.
 # #
 # # Full walkthrough of every block: .github/workflows/README.md
 
@@ -28,6 +25,11 @@
 # env:
 #   AWS_REGION: us-east-1   # must match regional-values.yaml
 
+# # If you push again while a plan is still running, the old plan is cancelled.
+# concurrency:
+#   group: plan-${{ github.ref }}
+#   cancel-in-progress: true
+
 # jobs:
 #   plan:
 #     runs-on: ubuntu-latest
@@ -40,32 +42,14 @@
 #         env:
 #           COMMIT_MSG: ${{ github.event.head_commit.message }}
 #         run: |
-#           # "Path: /resources/us-east-1/dev/network" -> resources/us-east-1/dev/network
-#           path="$(printf '%s' "$COMMIT_MSG" | grep -oiE 'path: *[^[:space:]]+' | head -1 | sed -E 's/^[Pp]ath: *//; s|^/||; s|/$||')"
-#           # "[update][network]" -> network   (typo cross-check only: a bare
-#           # tag cannot identify the environment, so it never picks the folder)
-#           tag="$(printf '%s' "$COMMIT_MSG" | sed -nE 's/^\[[^]]+\]\[([^]]+)\].*/\1/p')"
+#           # Take the text after "Path: /"   e.g. resources/us-east-1/dev/network
+#           dir="$(echo "$COMMIT_MSG" | grep -o 'Path: */[^ ]*' | head -1 | sed 's|Path: */||')"
 
-#           if [ -z "$path" ] || [ ! -d "$path" ]; then
-#             echo "::error::No valid stack folder in the commit message (Path: '/$path'). Expected e.g. '[update][network] ... - Path: /resources/us-east-1/dev/network'"
+#           # It must be an existing stack folder under resources/
+#           if [ ! -d "$dir" ] || [[ "$dir" != resources/* ]]; then
+#             echo "::error::Commit message must end with '- Path: /resources/<region>/<env>/<stack>' (got '$dir')"
 #             exit 1
 #           fi
-#           dir="$path"
-
-#           # Warn if the [tag] does not match the stack folder's name
-#           case "$(basename "$dir")" in
-#             "$tag"*) ;;
-#             *) echo "::warning::Bracket tag '$tag' does not match stack folder '$(basename "$dir")' - possible typo in the commit message" ;;
-#           esac
-
-#           # Child modules are not runnable roots - point the Path at the
-#           # stack that consumes the module instead.
-#           case "$dir" in
-#             modules/*)
-#               echo "::error::'$dir' is a child module, not a stack - name the stack that uses it (e.g. Path: /resources/us-east-1/dev/network)"
-#               exit 1
-#               ;;
-#           esac
 
 #           echo "Terraform will run in: $dir"
 #           echo "dir=$dir" >> "$GITHUB_OUTPUT"
@@ -73,13 +57,16 @@
 #       - name: Configure AWS credentials (OIDC)
 #         uses: aws-actions/configure-aws-credentials@v5
 #         with:
-#           role-to-assume: ${{ vars.AWS_ROLE_ARN_PLAN }}   # read-only plan role - set this Actions variable to an existing or new role ARN; not managed in this repo
+#           role-to-assume: ${{ vars.AWS_ROLE_ARN_PLAN }}   # read-only plan role - set this Actions variable; not managed in this repo
 #           aws-region: ${{ env.AWS_REGION }}
 
 #       - name: Setup Terraform
 #         uses: hashicorp/setup-terraform@v3
 #         with:
 #           terraform_version: "1.12.2"   # PLACEHOLDER: pin to your version (>= 1.10 for S3 native state locking)
+
+#       - name: Terraform Format
+#         run: terraform fmt -check -recursive modules resources
 
 #       - name: Terraform Init
 #         working-directory: ${{ steps.target.outputs.dir }}
