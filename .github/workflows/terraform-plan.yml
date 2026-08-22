@@ -5,11 +5,19 @@
 # name: Terraform Plan
 
 # # Push to a feature branch -> read the stack folder from the commit
-# # message -> run "terraform plan" in that folder.
+# # message -> run "terraform plan" in that folder, inside the GitHub
+# # environment named after the env folder (dev / uat / prod).
 # #
 # # Commit message convention:
 # #   [<action>][<stack>] <short description> - Path: /<stack-folder>
 # #   e.g. "[update][network] added a private subnet - Path: /resources/us-east-1/dev/network"
+# #
+# # Two jobs: "target" reads the Path and works out the env; "plan" runs
+# # Terraform inside that GitHub environment, so vars.AWS_ROLE_ARN_PLAN
+# # resolves to THAT environment's value (one role per AWS account, same
+# # variable name everywhere). NOTE: required reviewers on an environment
+# # gate plans too - keep reviewers on the apply side unless you want to
+# # approve every prod plan.
 # #
 # # Full walkthrough of every block: .github/workflows/README.md
 
@@ -31,8 +39,11 @@
 #   cancel-in-progress: true
 
 # jobs:
-#   plan:
+#   target:
 #     runs-on: ubuntu-latest
+#     outputs:
+#       dir: ${{ steps.target.outputs.dir }}
+#       env: ${{ steps.target.outputs.env }}
 #     steps:
 #       - name: Checkout
 #         uses: actions/checkout@v5
@@ -51,15 +62,27 @@
 #             exit 1
 #           fi
 
-#           echo "Terraform will run in: $dir"
+#           # The env is the folder after the region: resources/us-east-1/dev/network -> dev
+#           env="$(echo "$dir" | cut -d/ -f3)"
+
+#           echo "Terraform will run in: $dir (environment: $env)"
 #           echo "dir=$dir" >> "$GITHUB_OUTPUT"
-#           # Also show it on the run's summary page, above the job
-#           echo "### Terraform will run in \`$dir\`" >> "$GITHUB_STEP_SUMMARY"
+#           echo "env=$env" >> "$GITHUB_OUTPUT"
+#           # Also show it on the run's summary page, above the jobs
+#           echo "### Terraform will run in \`$dir\` (environment: \`$env\`)" >> "$GITHUB_STEP_SUMMARY"
+
+#   plan:
+#     needs: target
+#     runs-on: ubuntu-latest
+#     environment: ${{ needs.target.outputs.env }}   # dev / uat / prod - must exist in Settings > Environments
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v5
 
 #       - name: Configure AWS credentials (OIDC)
 #         uses: aws-actions/configure-aws-credentials@v5
 #         with:
-#           role-to-assume: ${{ vars.AWS_ROLE_ARN_PLAN }}   # read-only plan role - set this Actions variable; not managed in this repo
+#           role-to-assume: ${{ vars.AWS_ROLE_ARN_PLAN }}   # environment variable: this env's account's plan role; not managed in this repo
 #           aws-region: ${{ env.AWS_REGION }}
 
 #       - name: Setup Terraform
@@ -70,24 +93,25 @@
 #       - name: Terraform Format
 #         run: terraform fmt -check -recursive modules resources
 
-#       - name: Terraform Init (${{ steps.target.outputs.dir }})
-#         working-directory: ${{ steps.target.outputs.dir }}
+#       - name: Terraform Init (${{ needs.target.outputs.dir }})
+#         working-directory: ${{ needs.target.outputs.dir }}
 #         run: terraform init -input=false
 #         # PLACEHOLDER: enable once the state bucket exists.
 #         # The bucket name is NOT committed (public repo - it contains the
-#         # account id); put it in an Actions variable like the role ARNs.
-#         # State keys mirror the repo layout, prefixed with the repo name:
+#         # account id); put it in an environment variable like the role ARN
+#         # (one bucket per account). State keys mirror the repo layout,
+#         # prefixed with the repo name:
 #         #   <bucket>/<repo-name>/resources/us-east-1/dev/network/terraform.tfstate
 #         #   terraform init -input=false \
 #         #     -backend-config="bucket=${{ vars.TFSTATE_BUCKET }}" \
-#         #     -backend-config="key=${{ github.event.repository.name }}/${{ steps.target.outputs.dir }}/terraform.tfstate" \
+#         #     -backend-config="key=${{ github.event.repository.name }}/${{ needs.target.outputs.dir }}/terraform.tfstate" \
 #         #     -backend-config="region=${{ env.AWS_REGION }}" \
 #         #     -backend-config="use_lockfile=true"
 
-#       - name: Terraform Validate (${{ steps.target.outputs.dir }})
-#         working-directory: ${{ steps.target.outputs.dir }}
+#       - name: Terraform Validate (${{ needs.target.outputs.dir }})
+#         working-directory: ${{ needs.target.outputs.dir }}
 #         run: terraform validate
 
-#       - name: Terraform Plan (${{ steps.target.outputs.dir }})
-#         working-directory: ${{ steps.target.outputs.dir }}
+#       - name: Terraform Plan (${{ needs.target.outputs.dir }})
+#         working-directory: ${{ needs.target.outputs.dir }}
 #         run: terraform plan -input=false

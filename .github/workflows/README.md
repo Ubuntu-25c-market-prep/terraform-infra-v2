@@ -106,6 +106,27 @@ Only one run per group at a time.
 - **Plan**: the group is the branch name, and a newer run cancels the older one — push twice quickly and only the latest plan runs. The old plan was for code that no longer exists.
 - **Apply**: one group for everything and nothing is cancelled — two merges close together apply one after the other instead of fighting over the state lock.
 
+### `jobs` — two jobs, and why
+
+```yaml
+jobs:
+  target:                 # reads the Path, outputs dir + env
+    outputs:
+      dir: ${{ steps.target.outputs.dir }}
+      env: ${{ steps.target.outputs.env }}
+  plan:                   # (apply in the other file)
+    needs: target
+    environment: ${{ needs.target.outputs.env }}
+```
+
+In one sentence each: **`target` reads the commit message and works out the stack folder and its env; `plan`/`apply` runs Terraform inside the GitHub environment with that name.**
+
+Why two jobs: `environment:` is a job-level setting — it can't be set by a step in the same job. So the Path is read in a small first job, handed over as job `outputs`, and the second job uses it. Every later step refers to `needs.target.outputs.dir` (from the other job) instead of `steps.target.outputs.dir` (same job).
+
+Why an environment at all: the env folder name (`dev`, `uat`, `prod` — the third segment of the Path) becomes the GitHub environment name. Variables are then looked up **per environment**: `vars.AWS_ROLE_ARN_PLAN` is one line in the workflow, but the `prod` environment holds the prod account's role ARN and `dev` holds dev's. One workflow, any number of environments/accounts, nothing hardcoded. The environment is also where **required reviewers** go — put them on `prod` and every prod apply waits for a human.
+
+Since each job is a fresh runner, the second job checks out the repo again.
+
 ---
 
 ## The steps
@@ -133,7 +154,8 @@ In plain English:
 
 1. **Extract the Path** — `grep` finds the first `Path: /...` in the message, `sed` drops the `Path: /` prefix: `Path: /resources/us-east-1/dev/network` → `resources/us-east-1/dev/network`.
 2. **Check it is a real stack folder** — it must exist *and* be under `resources/`. A missing or misspelled Path, or `Path: /modules/...` (modules are not runnable roots), fails with an error showing the expected format. There is no fallback: the Path is the single source of truth.
-3. **Publish the result** — writing `dir=...` to `$GITHUB_OUTPUT` makes the folder available to later steps as `steps.target.outputs.dir`. The same line written to `$GITHUB_STEP_SUMMARY` shows the folder on the run's overview page, and the Terraform steps put it in their names — `Terraform Apply (resources/us-east-1/prod/alb)` — so where Terraform ran is visible without opening any log.
+3. **Work out the env** — `cut -d/ -f3` takes the third folder: `resources/us-east-1/prod/alb` → `prod`. This becomes the GitHub environment name.
+4. **Publish the result** — writing `dir=...` and `env=...` to `$GITHUB_OUTPUT` makes them step outputs; the job's `outputs:` block re-exports them so the next job can read `needs.target.outputs.dir`. The same values written to `$GITHUB_STEP_SUMMARY` show on the run's overview page, and the Terraform steps put the folder in their names — `Terraform Apply (resources/us-east-1/prod/alb)` — so where Terraform ran is visible without opening any log.
 
 Two details worth knowing:
 
@@ -155,12 +177,12 @@ Two details worth knowing:
 
 No long-lived AWS keys anywhere. The action asks GitHub for a short-lived OIDC token (allowed by `id-token: write`), sends it to AWS STS, and assumes the IAM role. AWS verifies the token really came from this repo (the role's trust policy pins the repo/branch). The resulting temporary credentials are exported as env vars, which the Terraform AWS provider picks up automatically.
 
-Each workflow assumes its own role. **Both roles — and the state bucket — are deliberately NOT managed in this repo** (point the Actions variables at existing roles, modified ones, or new ones - the workflows only reference them), so no pipeline change can ever touch CI's own identity or the state:
+Each workflow assumes its own role, **per environment**. **The roles — and the state bucket — are deliberately NOT managed in this repo** (point the variables at existing roles, modified ones, or new ones - the workflows only reference them), so no pipeline change can ever touch CI's own identity or the state:
 
-- **Plan role** — assumable from any branch of this repo; read-only plus write access to the state lockfile.
-- **Apply role** — assumable only from `main` or the `aws-apply` GitHub environment; write access.
+- **Plan role** — read-only plus write access to the state lockfile; its trust policy allows `repo:<org>/<repo>:environment:<env>`.
+- **Apply role** — write access; trust policy likewise pinned to the environment.
 
-The role ARNs are not sensitive, so they live in **Actions variables** (`vars.`, Settings → Secrets and variables → Actions → Variables) where they're visible and auditable — secrets are reserved for values that must stay hidden.
+With one AWS account per env, each account has its own plan and apply role (same names, different account id in the ARN) and its own GitHub OIDC identity provider. The role ARNs are not sensitive, so they live in **environment variables** (Settings → Environments → `<env>` → Variables) under the same name in every environment — `vars.AWS_ROLE_ARN_PLAN` resolves to whichever environment the job declared. Secrets are reserved for values that must stay hidden.
 
 ### Setup Terraform
 
@@ -185,17 +207,17 @@ Fails the plan if any `.tf` file isn't formatted the way `terraform fmt` would w
 ### Terraform steps
 
 ```yaml
-- name: Terraform Init
-  working-directory: ${{ steps.target.outputs.dir }}
+- name: Terraform Init (${{ needs.target.outputs.dir }})
+  working-directory: ${{ needs.target.outputs.dir }}
   run: terraform init -input=false
 ```
 
-`working-directory` is where the commit-message parsing pays off: every Terraform command runs inside the chosen stack folder. `-input=false` makes Terraform fail instead of waiting for interactive input that will never come in CI.
+`working-directory` is where the commit-message parsing pays off: every Terraform command runs inside the chosen stack folder (read from the `target` job via `needs.target.outputs.dir`). `-input=false` makes Terraform fail instead of waiting for interactive input that will never come in CI.
 
 - **Plan workflow:** `init` → `validate` (syntax/consistency check, needs no AWS) → `plan`.
 - **Apply workflow:** `init` → `apply -auto-approve`. The `-auto-approve` skips the interactive "yes" prompt; the human review already happened at PR time via the plan output.
 
-The commented `-backend-config` block under `init` is a **placeholder** for the future S3 remote state backend. The bucket name contains the account id, so it is never committed (public repo) — it goes in the `TFSTATE_BUCKET` Actions variable. **State keys mirror the repo layout, prefixed with the repo name** — `<repo-name>/resources/us-east-1/dev/network/terraform.tfstate` — so finding a stack's state in S3 is the same path you'd use in the repo, and one bucket can host state for several repos without collisions. The repo name comes from `github.event.repository.name` at runtime; the stack path is the parsed folder, so each stack in each environment gets its own state file automatically.
+The commented `-backend-config` block under `init` is a **placeholder** for the future S3 remote state backend. The bucket name contains the account id, so it is never committed (public repo) — it goes in the `TFSTATE_BUCKET` environment variable (one bucket per account, so per environment). **State keys mirror the repo layout, prefixed with the repo name** — `<repo-name>/resources/us-east-1/dev/network/terraform.tfstate` — so finding a stack's state in S3 is the same path you'd use in the repo, and one bucket can host state for several repos without collisions. The repo name comes from `github.event.repository.name` at runtime; the stack path is the parsed folder, so each stack in each environment gets its own state file automatically.
 
 ---
 
@@ -208,7 +230,9 @@ The commented `-backend-config` block under `init` is a **placeholder** for the 
 | Checkout | shallow (default) | `fetch-depth: 0` — needs history to read the merged commits |
 | Concurrency | per branch, newer run cancels older | one global group, runs queue, never cancelled |
 | Terraform | `fmt -check`, `init`, `validate`, `plan` | `init`, `apply -auto-approve` |
-| Extra safety | — | commented-out `environment: aws-apply` — uncomment it (and create the environment with required reviewers) to add a manual approval gate before every apply |
+| Environment | `dev`/`uat`/`prod` from the Path — picks the plan role | same — picks the apply role; **required reviewers on `prod`** = manual approval before every prod apply |
+
+Note: reviewers on an environment gate *every* job that declares it, plans included. If approving prod plans is unwanted, use separate environments for plan (`prod-plan`, no reviewers) and apply (`prod`) — a one-line change in the plan workflow (`environment: ${{ needs.target.outputs.env }}-plan`).
 
 ## Rules the team must follow
 
@@ -223,9 +247,12 @@ Because commit messages are the source of truth, the workflows only work when th
 
 | Where | Name | Purpose |
 |---|---|---|
-| Actions variable | `AWS_ROLE_ARN_PLAN` | read-only role for plans — an existing or new role ARN; not managed in this repo |
-| Actions variable | `AWS_ROLE_ARN_APPLY` | write role for applies — an existing or new role ARN; not managed in this repo |
-| Actions variable | `TFSTATE_BUCKET` | S3 state bucket name (contains the account id — never committed); needed once the S3 backend is enabled |
+| GitHub environments | `dev`, `uat`, `prod` | one per env folder under `resources/<region>/` — names must match the folder names exactly. Required reviewers on `prod`. |
+| Environment variable (in each) | `AWS_ROLE_ARN_PLAN` | read-only role for plans in that env's account — an existing or new role ARN; not managed in this repo |
+| Environment variable (in each) | `AWS_ROLE_ARN_APPLY` | write role for applies in that env's account — an existing or new role ARN; not managed in this repo |
+| Environment variable (in each) | `TFSTATE_BUCKET` | that account's S3 state bucket (contains the account id — never committed); needed once the S3 backend is enabled |
 | Workflow `env:` block (hardcoded) | `AWS_REGION` | AWS region — set to `us-east-1`, must match `regional-values.yaml` |
 
-Everything on the AWS side (state bucket, both OIDC CI roles) is **deliberately not managed here** — the Actions variables above are the only link, and they can point at existing roles, modified ones, or new ones. The account-level GitHub OIDC identity provider is likewise only referenced, never created.
+Adding a new env = a new folder under `resources/<region>/` **and** a GitHub environment of the same name with its three variables. Nothing in the workflow files changes.
+
+Everything on the AWS side (state buckets, OIDC CI roles, the per-account GitHub OIDC identity provider) is **deliberately not managed here** — the environment variables above are the only link, and they can point at existing roles, modified ones, or new ones.

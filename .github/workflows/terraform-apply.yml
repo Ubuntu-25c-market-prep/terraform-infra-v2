@@ -5,7 +5,8 @@
 # name: Terraform Apply
 
 # # Merge to main -> read the stack folder from the merged commits' messages
-# # -> run "terraform apply" in that folder.
+# # -> run "terraform apply" in that folder, inside the GitHub environment
+# # named after the env folder (dev / uat / prod).
 # #
 # # Commit message convention (on the branch commits):
 # #   [<action>][<stack>] <short description> - Path: /<stack-folder>
@@ -14,6 +15,12 @@
 # # The newest merged commit that has a "Path:" wins. Works with merge
 # # commits, rebase, and squash (for squash, keep GitHub's default squash
 # # message "Pull request title and commit details" so the Path survives).
+# #
+# # Two jobs: "target" reads the Path and works out the env; "apply" runs
+# # Terraform inside that GitHub environment, so vars.AWS_ROLE_ARN_APPLY
+# # resolves to THAT environment's value (one role per AWS account, same
+# # variable name everywhere). Required reviewers on the "prod" environment
+# # = a manual approval before every prod apply.
 # #
 # # Full walkthrough of every block: .github/workflows/README.md
 
@@ -34,11 +41,11 @@
 #   group: apply
 
 # jobs:
-#   apply:
+#   target:
 #     runs-on: ubuntu-latest
-#     # OPTIONAL: uncomment to require a manual approval in GitHub before apply runs.
-#     # (Settings > Environments > create "aws-apply" with required reviewers)
-#     # environment: aws-apply
+#     outputs:
+#       dir: ${{ steps.target.outputs.dir }}
+#       env: ${{ steps.target.outputs.env }}
 #     steps:
 #       - name: Checkout
 #         uses: actions/checkout@v5
@@ -61,15 +68,27 @@
 #             exit 1
 #           fi
 
-#           echo "Terraform will run in: $dir"
+#           # The env is the folder after the region: resources/us-east-1/dev/network -> dev
+#           env="$(echo "$dir" | cut -d/ -f3)"
+
+#           echo "Terraform will run in: $dir (environment: $env)"
 #           echo "dir=$dir" >> "$GITHUB_OUTPUT"
-#           # Also show it on the run's summary page, above the job
-#           echo "### Terraform will run in \`$dir\`" >> "$GITHUB_STEP_SUMMARY"
+#           echo "env=$env" >> "$GITHUB_OUTPUT"
+#           # Also show it on the run's summary page, above the jobs
+#           echo "### Terraform will run in \`$dir\` (environment: \`$env\`)" >> "$GITHUB_STEP_SUMMARY"
+
+#   apply:
+#     needs: target
+#     runs-on: ubuntu-latest
+#     environment: ${{ needs.target.outputs.env }}   # dev / uat / prod - must exist in Settings > Environments; put required reviewers on prod
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v5
 
 #       - name: Configure AWS credentials (OIDC)
 #         uses: aws-actions/configure-aws-credentials@v5
 #         with:
-#           role-to-assume: ${{ vars.AWS_ROLE_ARN_APPLY }}   # apply role - set this Actions variable; not managed in this repo
+#           role-to-assume: ${{ vars.AWS_ROLE_ARN_APPLY }}   # environment variable: this env's account's apply role; not managed in this repo
 #           aws-region: ${{ env.AWS_REGION }}
 
 #       - name: Setup Terraform
@@ -77,11 +96,11 @@
 #         with:
 #           terraform_version: "1.12.2"   # PLACEHOLDER: pin to your version (>= 1.10 for S3 native state locking)
 
-#       - name: Terraform Init (${{ steps.target.outputs.dir }})
-#         working-directory: ${{ steps.target.outputs.dir }}
+#       - name: Terraform Init (${{ needs.target.outputs.dir }})
+#         working-directory: ${{ needs.target.outputs.dir }}
 #         run: terraform init -input=false
 #         # PLACEHOLDER: same backend config as the plan workflow when ready
 
-#       - name: Terraform Apply (${{ steps.target.outputs.dir }})
-#         working-directory: ${{ steps.target.outputs.dir }}
+#       - name: Terraform Apply (${{ needs.target.outputs.dir }})
+#         working-directory: ${{ needs.target.outputs.dir }}
 #         run: terraform apply -input=false -auto-approve
