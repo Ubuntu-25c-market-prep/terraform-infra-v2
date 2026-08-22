@@ -53,6 +53,8 @@
 
 #           echo "Terraform will run in: $dir"
 #           echo "dir=$dir" >> "$GITHUB_OUTPUT"
+#           # Also show it on the run's summary page, above the job
+#           echo "### Terraform will run in \`$dir\`" >> "$GITHUB_STEP_SUMMARY"
 
 #       - name: Configure AWS credentials (OIDC)
 #         uses: aws-actions/configure-aws-credentials@v5
@@ -68,7 +70,7 @@
 #       - name: Terraform Format
 #         run: terraform fmt -check -recursive modules resources
 
-#       - name: Terraform Init
+#       - name: Terraform Init (${{ steps.target.outputs.dir }})
 #         working-directory: ${{ steps.target.outputs.dir }}
 #         run: terraform init -input=false
 #         # PLACEHOLDER: enable once the state bucket exists.
@@ -82,10 +84,10 @@
 #         #     -backend-config="region=${{ env.AWS_REGION }}" \
 #         #     -backend-config="use_lockfile=true"
 
-#       - name: Terraform Validate
+#       - name: Terraform Validate (${{ steps.target.outputs.dir }})
 #         working-directory: ${{ steps.target.outputs.dir }}
 #         run: terraform validate
 
-#       - name: Terraform Plan
+#       - name: Terraform Plan (${{ steps.target.outputs.dir }})
 #         working-directory: ${{ steps.target.outputs.dir }}
 #         run: terraform plan -input=false

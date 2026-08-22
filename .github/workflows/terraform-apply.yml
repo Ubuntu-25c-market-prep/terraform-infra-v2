@@ -63,6 +63,8 @@
 
 #           echo "Terraform will run in: $dir"
 #           echo "dir=$dir" >> "$GITHUB_OUTPUT"
+#           # Also show it on the run's summary page, above the job
+#           echo "### Terraform will run in \`$dir\`" >> "$GITHUB_STEP_SUMMARY"
 
 #       - name: Configure AWS credentials (OIDC)
 #         uses: aws-actions/configure-aws-credentials@v5
@@ -75,11 +77,11 @@
 #         with:
 #           terraform_version: "1.12.2"   # PLACEHOLDER: pin to your version (>= 1.10 for S3 native state locking)
 
-#       - name: Terraform Init
+#       - name: Terraform Init (${{ steps.target.outputs.dir }})
 #         working-directory: ${{ steps.target.outputs.dir }}
 #         run: terraform init -input=false
 #         # PLACEHOLDER: same backend config as the plan workflow when ready
 
-#       - name: Terraform Apply
+#       - name: Terraform Apply (${{ steps.target.outputs.dir }})
 #         working-directory: ${{ steps.target.outputs.dir }}
 #         run: terraform apply -input=false -auto-approve

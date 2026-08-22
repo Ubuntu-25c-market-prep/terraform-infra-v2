@@ -133,7 +133,7 @@ In plain English:
 
 1. **Extract the Path** — `grep` finds the first `Path: /...` in the message, `sed` drops the `Path: /` prefix: `Path: /resources/us-east-1/dev/network` → `resources/us-east-1/dev/network`.
 2. **Check it is a real stack folder** — it must exist *and* be under `resources/`. A missing or misspelled Path, or `Path: /modules/...` (modules are not runnable roots), fails with an error showing the expected format. There is no fallback: the Path is the single source of truth.
-3. **Publish the result** — writing `dir=...` to `$GITHUB_OUTPUT` makes the folder available to later steps as `steps.target.outputs.dir`.
+3. **Publish the result** — writing `dir=...` to `$GITHUB_OUTPUT` makes the folder available to later steps as `steps.target.outputs.dir`. The same line written to `$GITHUB_STEP_SUMMARY` shows the folder on the run's overview page, and the Terraform steps put it in their names — `Terraform Apply (resources/us-east-1/prod/alb)` — so where Terraform ran is visible without opening any log.
 
 Two details worth knowing:
 
