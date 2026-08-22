@@ -1,0 +1,47 @@
+# Each role is one entry of the roles array below, merged over
+# role_defaults. Two role types:
+#
+#   service - assumed by an AWS service (eks.amazonaws.com, ...)
+#   irsa    - assumed by ONE Kubernetes service account; namespace and
+#             service_account are REQUIRED (the trust policy is conditioned on
+#             system:serviceaccount:<ns>:<sa> - org rule, Kyverno-enforced)
+#
+# Optional per-role fields: description, max_session_duration (seconds),
+# permissions_boundary (policy ARN), policy_arns (managed), policy (inline).
+# A role must grant something: policy_arns and/or policy.
+#
+# NOTE: CI identity (the GitHub Actions plan/apply roles) is NOT managed
+# in this repo - the workflows only reference it via Actions variables.
+iam:
+  role_defaults:
+    type: service # default: service
+    services: []
+    policy_arns: []
+    policy: []
+
+  # One entry per role; keys not stated fall back to role_defaults.
+  roles: []
+  #
+  # IRSA role: assumable ONLY by this service account in this namespace.
+  # - name: example-irsa
+  #   type: irsa
+  #   description: Example IRSA role - copy, rename, adjust
+  #   namespace: kube-system      # REQUIRED for irsa
+  #   service_account: example-sa # REQUIRED for irsa
+  #   policy_arns:
+  #     - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+  #   policy:
+  #     - effect: Allow
+  #       actions:
+  #         - sqs:ReceiveMessage
+  #       resources:
+  #         - "*"
+  #
+  # Service role: assumable by an AWS service principal.
+  # - name: example-service
+  #   type: service
+  #   description: Example service role - copy, rename, adjust
+  #   services:
+  #     - ec2.amazonaws.com # REQUIRED: at least one principal
+  #   policy_arns:
+  #     - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore

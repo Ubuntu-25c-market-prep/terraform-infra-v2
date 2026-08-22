@@ -270,7 +270,7 @@ module "cluster" {
 # Re-add them as their own change when this cluster goes live.
 
 module "irsa" {
-  source = "../../../../modules/iam"
+  source = "../../../../modules/iam-roles"
 
   name  = local.name_prefix
   roles = local.irsa_roles

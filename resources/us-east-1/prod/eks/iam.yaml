@@ -4,7 +4,7 @@
 #   iam_role_tags    - extra tags on every IRSA role
 # CI identity (GitHub Actions plan/apply roles) is NOT managed in this
 # repo - the workflows only reference it via Actions variables.
-# Non-cluster IAM stays in the iam stack.
+# Non-cluster IAM stays in the iam-roles stack.
 
 # Keys are the principal. The org template keys by full ARN - an arn: key
 # works here verbatim - but ARNs embed the account id and this repo is
@@ -83,8 +83,8 @@ service_accounts: {}
 #         actions: [s3:ListBucket]
 #         resources: ["arn:aws:s3:::CHANGE_ME-velero-bucket"]
 
-# --- AWS Load Balancer Controller, binding-only (lb stack) -------------
-# Terraform owns the ALB, listeners and target groups (../lb); the
+# --- AWS Load Balancer Controller, binding-only (alb/nlb stacks) -------------
+# Terraform owns the ALB, listeners and target groups (../alb, ../nlb); the
 # controller's only job is registering pod IPs via TargetGroupBinding.
 # So the policy is register/deregister + describe - a fraction of the
 # upstream iam_policy.json, which is only needed when the controller may

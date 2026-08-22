@@ -8,7 +8,6 @@ locals {
     local.region_values,
     local.env_values,
     yamldecode(file("${path.module}/config.yaml")).nlb,
-    yamldecode(file("${path.module}/config.yaml")).target_groups,
     # tags exist in every layer; a plain merge keeps only the last map, so
     # combine them explicitly (later layers win on the same key)
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags) },
@@ -16,10 +15,10 @@ locals {
 
   name_prefix = "${local.config.org}-${local.config.env}"
 
-  target_groups = [
-    for f in fileset("${path.module}/tg", "*.yaml") :
-    merge(local.config.target_group_defaults, yamldecode(file("${path.module}/tg/${f}")))
-  ]
+  # Each entry of config.yaml's target_groups array, merged over
+  # target_group_defaults (shallow: a health_check stated in an entry
+  # replaces the whole default map).
+  target_groups = [for tg in local.config.target_groups : merge(local.config.target_group_defaults, tg)]
 
   # Org/Env/Component/Repo are added by the provider's default_tags
   tags = local.config.tags

@@ -16,7 +16,7 @@ locals {
   listener_ingress = {
     for e in flatten([
       for tg in var.target_groups : [
-        for proto in (tg.listener.protocol == "UDP" ? ["udp"] : tg.listener.protocol == "TCP_UDP" ? ["tcp", "udp"] : ["tcp"]) : {
+        for proto in(tg.listener.protocol == "UDP" ? ["udp"] : tg.listener.protocol == "TCP_UDP" ? ["tcp", "udp"] : ["tcp"]) : {
           key         = "${tg.listener.port}-${proto}"
           port        = tg.listener.port
           ip_protocol = proto

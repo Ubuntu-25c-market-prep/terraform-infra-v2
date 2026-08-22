@@ -12,10 +12,10 @@ environment, all values in YAML, CI driven by commit messages.
 ├── modules/               # Reusable child modules - never run directly
 │   ├── vpc/               # VPC, public+private subnets, NAT, S3 endpoint
 │   ├── ecr/               # Repositories + lifecycle policies
-│   ├── iam/               # Roles: type service (AWS principals) or irsa
+│   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
 │   ├── ec2/               # SSM-only instances (no SSH) - for the jump host
-│   ├── lb/                # Terraform-owned ALB + ip target groups; pods
+│   ├── alb/               # Terraform-owned ALB + ip target groups; pods
 │   │                      # join via TargetGroupBinding (never Ingress)
 │   ├── nlb/               # Terraform-owned NLB (L4: TCP/UDP/TLS) + ip target
 │   │                      # groups, one listener per group; same binding model
@@ -30,15 +30,15 @@ environment, all values in YAML, CI driven by commit messages.
         ├── dev/                     # one complete set of stacks per env
         │   ├── dev-values.yaml      # env name + env tags
         │   ├── network/             # VPC: 2 public + 2 private subnets, NAT
-        │   ├── ecr/                 # one YAML per repository in config/
-        │   ├── iam/                 # non-cluster IAM roles (config/)
-        │   ├── s3/                  # one YAML per bucket in config/
+        │   ├── ecr/                 # repositories array in config.yaml
+        │   ├── iam-roles/           # non-cluster IAM roles (roles array in config.yaml)
+        │   ├── s3/                  # buckets array in config.yaml
         │   ├── eks/                 # ONE stack: cluster + node groups (ng/)
         │   │                        # + extra SGs (sg/) + identity (iam.yaml)
-        │   ├── lb/                  # ALB in front of the cluster - one
-        │   │                        # YAML per target group in tg/
+        │   ├── alb/                 # ALB in front of the cluster - target
+        │   │                        # groups array in config.yaml
         │   └── nlb/                 # NLB for L4 traffic (mesh ingress, TCP/
-        │                            # UDP) - one YAML per target group in tg/
+        │                            # UDP) - target groups array in config.yaml
         ├── uat/                     # same shape, uat values
         └── prod/                    # same shape, prod values
 ```
@@ -67,10 +67,13 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 - **Strict lookups on purpose**: every value a stack uses is stated in
   YAML; a missing key fails the plan instead of silently using a module
   default. `# default:` comments are reference only.
-- **Per-item files**: `ecr/config/`, `s3/config/`, `iam/config/`,
-  `eks/ng/`, `eks/sg/`, `lb/tg/`, `nlb/tg/` — one YAML file per repository / bucket /
-  role / node group / security group / target group, merged over that
-  stack's `*_defaults`. `.example` files are inactive documentation.
+- **Per-item arrays**: repositories, buckets, roles and target groups are
+  arrays in their stack's `config.yaml` (`ecr.repositories`, `s3.buckets`,
+  `iam.roles`, `alb.target_groups`, `nlb.target_groups`), each entry merged
+  over that stack's `*_defaults`; a commented example entry under each
+  array is the template. The eks stack is the exception: node groups and
+  security groups stay one file each under `eks/ng/` and `eks/sg/`
+  (org format, `.example` files are inactive documentation).
 - **Cluster identity lives in `eks/iam.yaml`** — access entries (SSO
   role-name patterns, never ARNs) and IRSA roles for workloads, with
   ready-to-uncomment blocks for ebs-csi, Velero, external-dns,
@@ -131,4 +134,4 @@ terraform plan
 The eks stack's access-entry lookup needs IAM read on the SSO path -
 it works in CI and as PlatformAdmin; PlatformEngineer is denied locally.
 Apply order within an env: network first (subnets before nodes), then eks,
-then lb/nlb (they read both states); ecr/s3/iam are independent.
+then alb/nlb (they read both states); ecr/s3/iam-roles are independent.

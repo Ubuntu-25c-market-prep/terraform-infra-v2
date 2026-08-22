@@ -2,7 +2,7 @@
 
 One internet-facing NLB in front of the cluster for L4 traffic (TCP, UDP,
 TLS passthrough or termination), with the same ownership split as the
-`lb` (ALB) stack:
+`alb` stack:
 
 - **Terraform owns the load balancer**: NLB, listeners, target groups and
   security-group wiring all live in this stack, next to every other piece
@@ -26,7 +26,7 @@ and a second cluster can bind into the same target groups later
 
 | Need | Stack |
 |---|---|
-| HTTP routing by path/host, WAF, HTTP redirects | `lb` (ALB) |
+| HTTP routing by path/host, WAF, HTTP redirects | `alb` |
 | Non-HTTP protocols (TCP/UDP), TLS passthrough (mTLS to the pod) | `nlb` |
 | A service mesh ingress gateway that terminates TLS itself (Istio) | `nlb` |
 | Static IPs / PrivateLink endpoint service | `nlb` |
@@ -35,7 +35,7 @@ and a second cluster can bind into the same target groups later
 
 ```
 internet -> NLB (public subnets, own SG)
-         -> listener (one port, from tg/*.yaml - no rules on an NLB)
+         -> listener (one port per target_groups entry - no rules on an NLB)
          -> target group (ip mode, TCP/UDP)
          -> pod ENI (private subnets, EKS cluster SG)
 ```
@@ -53,9 +53,9 @@ share of traffic.
 
 ## Adding a service
 
-1. Copy `tg/example-tg.yaml.example` to `tg/<service>.yaml`, set the
-   target port, the listener port and the health check, open a PR against
-   this stack. Merge + apply creates the (empty) target group and its
+1. Add an entry to `target_groups` in `config.yaml` (the commented example
+   there is the template), set the target port, the listener port and the
+   health check, open a PR against this stack. Merge + apply creates the (empty) target group and its
    listener; read the ARN from the `target_group_arns` output.
 2. Ship a `TargetGroupBinding` with the app's Flux release:
 
@@ -77,8 +77,8 @@ Order matters: target group first (this stack), binding second - same
 merge-before-release rule as IRSA roles in the eks stack.
 
 One listener port maps to exactly one target group. A service that needs
-several ports (e.g. 80 and 443 on an ingress gateway) gets one tg/ file
-per port.
+several ports (e.g. 80 and 443 on an ingress gateway) gets one
+`target_groups` entry per port.
 
 ## TLS
 
@@ -100,7 +100,7 @@ per port.
 
 ## What this stack is NOT for
 
-HTTP-level routing (paths, hosts, redirects, WAF) - that is the `lb`
+HTTP-level routing (paths, hosts, redirects, WAF) - that is the `alb`
 stack. Elastic IP allocation and PrivateLink endpoint services are not
 wired yet; the security-group-on-NLB design is what keeps both cheap to
 add later.

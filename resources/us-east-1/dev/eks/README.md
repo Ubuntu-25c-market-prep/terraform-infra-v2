@@ -16,7 +16,7 @@ resolve from the network stack's remote state (ids never live in this
 public repo); `kms_key_id` holds an ALIAS by org rule for the same
 reason. `ssh_key_name`/`node_jump_server_ssh` are commented and not
 wired - managed node groups carry no SSH remote access. IRSA roles get the cluster's OIDC provider wired directly, no
-remote state. Non-cluster IAM stays in the separate `iam/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
+remote state. Non-cluster IAM stays in the separate `iam-roles/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
 managed here — Flux CD owns them after the cluster is up. EKS still
 installs its default self-managed versions at creation, so nodes join
 before Flux runs.

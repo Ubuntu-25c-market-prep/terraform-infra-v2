@@ -28,7 +28,7 @@ kms_key_id: alias/u25c-uat-eks # default: null (no envelope encryption)
 #   Category:
 
 eks:
-  create_oidc: true # true when first creating cluster (IRSA - the iam stack needs it)
+  create_oidc: true # true when first creating cluster (IRSA - the iam-roles stack needs it)
   service_ipv4_cidr: 172.20.0.0/16 # default: null (AWS picks); must not overlap the VPC
 
   # This repo is public: keep this list generic. Narrow it at plan time
