@@ -10,7 +10,7 @@ environment, all values in YAML, CI driven by commit messages.
 ├── .github/workflows/     # plan on branch push, apply on merge - the stack
 │                          # folder comes from the commit message (see below)
 ├── modules/               # Reusable child modules - never run directly
-│   ├── vpc/               # VPC, public+private subnets, NAT, S3 endpoint
+│   ├── vpc/               # VPC, public+private subnets, S3 endpoint (NAT optional, off)
 │   ├── ecr/               # Repositories + lifecycle policies
 │   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
@@ -29,7 +29,7 @@ environment, all values in YAML, CI driven by commit messages.
         ├── regional-values.yaml     # region + regional tags
         ├── dev/                     # one complete set of stacks per env
         │   ├── dev-values.yaml      # env name + env tags
-        │   ├── network/             # VPC: 2 public + 2 private subnets, NAT
+        │   ├── network/             # VPC: 2 public + 2 private subnets, no NAT
         │   ├── ecr/                 # repositories array in config.yaml
         │   ├── iam-roles/           # non-cluster IAM roles (roles array in config.yaml)
         │   ├── s3/                  # buckets array in config.yaml
@@ -86,13 +86,16 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 | | dev | uat | prod |
 |---|---|---|---|
 | VPC | 10.0.0.0/16 | 10.2.0.0/16 | 10.1.0.0/16 |
-| NAT | single | single | per AZ |
+| NAT | none | none | none |
 | Cluster API | public | private + VPC-only public | private + VPC-only public |
 | Nodes (default) | t3.medium 1/2/3 | t3.large 1/2/4 | m5.large 2/3/5 |
 | ECR tags | mutable | immutable | immutable |
 
 Nodes run in the private subnets in all environments; public subnets hold
-NAT and internet-facing load balancers (tagged for controller discovery).
+the bastion and internet-facing load balancers. No NAT gateway anywhere:
+private subnets have no internet egress (S3 via the gateway endpoint
+only). The `nat_gateway:` lines in each `network/config.yaml` are
+commented out and can be restored per env if egress is ever needed.
 
 ## State
 
