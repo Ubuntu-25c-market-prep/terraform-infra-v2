@@ -23,6 +23,8 @@ resource "aws_iam_role_policy_attachment" "node" {
     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
     "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
     "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+    # Break-glass shell via Session Manager when kubelet/SSH are down.
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
   ])
 
   role       = aws_iam_role.node.name

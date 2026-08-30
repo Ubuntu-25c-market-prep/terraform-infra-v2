@@ -13,10 +13,9 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags) },
   )
 
-  repositories = [
-    for f in fileset("${path.module}/config", "*.yaml") :
-    merge(local.config.repository_defaults, yamldecode(file("${path.module}/config/${f}")))
-  ]
+  # Each entry of config.yaml's repositories array, merged over repository_defaults
+  # (shallow: a nested map stated in an entry replaces the whole default map).
+  repositories = [for item in local.config.repositories : merge(local.config.repository_defaults, item)]
 
   name_prefix = "${local.config.org}-${local.config.env}"
 

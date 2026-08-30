@@ -1,5 +1,5 @@
 # Key pair created FROM committed public key material - a public key is
-# safe in a public repo (only the private half must stay out of git).
+# only the private half must stay out of git.
 resource "aws_key_pair" "this" {
   count = var.ssh_public_key != null ? 1 : 0
 

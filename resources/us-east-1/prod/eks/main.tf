@@ -9,7 +9,7 @@ locals {
     local.global_values,
     local.region_values,
     local.env_values,
-    # config.yaml follows the org eks template: flat cluster_*/infra keys
+    # config.yaml follows the eks template: flat cluster_*/infra keys
     # plus the eks: map - none of them collide with the layered values.
     local.stack_config,
     # tags exist in every layer; a plain merge keeps only the last map, so
@@ -17,10 +17,12 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags, try(local.stack_config.tags, {})) },
   )
 
-  name_prefix = "${local.config.org}-${local.config.env}"
+  # Env first, matching the gitops-flux NodePool naming (cluster and
+  # IRSA names come verbatim from config.yaml/iam.yaml, org-first).
+  name_prefix = "${local.config.env}-${local.config.org}"
 
   # Node groups and extra security groups: one SELF-CONTAINED file each
-  # under ng/ resp. sg/, in the org format (no defaults layer). Both are
+  # under ng/ resp. sg/, in the template format (no defaults layer). Both are
   # translated into the modules' shapes below, after the network remote
   # state they depend on.
   node_group_files     = [for f in fileset("${path.module}/ng", "*.yaml") : yamldecode(file("${path.module}/ng/${f}"))]
@@ -33,12 +35,12 @@ locals {
     NoExecute        = "NO_EXECUTE"
   }
 
-  # Cluster identity - iam.yaml (org format): access_entries keyed by
+  # Cluster identity - iam.yaml (template format): access_entries keyed by
   # principal, service_accounts (IRSA) keyed by role name, iam_role_tags.
   iam_file = yamldecode(file("${path.module}/iam.yaml"))
 
-  # An arn: key IS the principal (org-template style; never committed
-  # here - public repo); any other key is an entry name whose principal
+  # An arn: key IS the principal (template style); any other key is
+  # an entry name whose principal
   # resolves at plan time from the entry's role_name / role_name_pattern.
   # policy_arn keeps the full cluster-access-policy ARN (no account id in
   # it) - the module wants the bare policy name.
@@ -70,7 +72,7 @@ locals {
     ],
   )
 
-  # service_accounts (org format) -> the iam module's irsa role shape;
+  # service_accounts (template format) -> the iam module's irsa role shape;
   # namespace_service_account is "<namespace>/<service_account>".
   irsa_roles = [
     for role_name, sa in local.iam_file.service_accounts : {
@@ -88,31 +90,38 @@ locals {
   tags = local.config.tags
 }
 
-data "terraform_remote_state" "network" {
-  backend = "local"
-
-  config = {
-    path = "${path.module}/../network/terraform.tfstate"
-  }
-}
+# No remote state: the network ids this stack needs (vpc_id,
+# cluster_subnet_ids, each group's subnet_ids) are stated in config.yaml
+# and ng/*.yaml, pasted from the network stack's outputs.
 
 locals {
-  # ng/*.yaml (org node-group format) -> node-groups module shape.
+  # Graviton (ARM) families: <letters><generation>g<suffix>. e.g. t4g, m7g,
+  # c7gn, r8g. A group is ARM when EVERY listed type is Graviton; mixing
+  # architectures in one group is rejected below.
+  node_group_arm = {
+    for g in local.node_group_files :
+    g.name => alltrue([for t in g.instance_type_list : can(regex("^[a-z]+[0-9]+g[a-z]*\\.", t))])
+  }
+
+  # ng/*.yaml (template node-group format) -> node-groups module shape.
   # Strict lookups on purpose (same rule as config.yaml): name, sizing and
-  # the use_*/public_instance switches must be stated in every file; only
-  # k8s_labels, k8s_taints, tags and subnet_ids may be omitted.
+  # the use_* switches and subnet_ids must be stated in every file; only
+  # k8s_labels, k8s_taints and tags may be omitted.
   node_groups = [
     for g in local.node_group_files : {
       name           = g.name
       instance_types = g.instance_type_list
       capacity_type  = g.use_on_demand_instance ? "ON_DEMAND" : "SPOT"
-      ami_type       = g.use_al2023_ami ? "AL2023_x86_64_STANDARD" : "AL2_x86_64"
-      min_size       = g.min_size
-      desired_size   = g.desired_size
-      max_size       = g.max_size
-      disk_size      = g.disk_size
-      labels         = try(g.k8s_labels, {})
-      tags           = try(g.tags, {})
+      # Architecture follows the instance types: a Graviton family has a
+      # "g" after the generation number (t4g, m7g, c7gn, r8g ...). AL2 is
+      # end-of-support on EKS, so use_al2023_ami must be true (checked below).
+      ami_type     = local.node_group_arm[g.name] ? "AL2023_ARM_64_STANDARD" : "AL2023_x86_64_STANDARD"
+      min_size     = g.min_size
+      desired_size = g.desired_size
+      max_size     = g.max_size
+      disk_size    = g.disk_size
+      labels       = try(g.k8s_labels, {})
+      tags         = try(g.tags, {})
 
       # k8s_taints entries are "<key>: <value>:<Effect>" (k8s spelling,
       # e.g. "dedicated: elk:NoSchedule") - split and map the effect.
@@ -124,18 +133,13 @@ locals {
         }
       ]
 
-      # Explicit subnet_ids in the file win (they never do in this public
-      # repo); otherwise public_instance picks this environment's public
-      # or private subnets from the network stack.
-      subnet_ids = try(g.subnet_ids, null) != null ? g.subnet_ids : (
-        g.public_instance
-        ? values(data.terraform_remote_state.network.outputs.public_subnet_ids)
-        : values(data.terraform_remote_state.network.outputs.private_subnet_ids)
-      )
+      # Stated per file (network stack output ids); public_instance is a
+      # template key, informational only.
+      subnet_ids = g.subnet_ids
     }
   ]
 
-  # sg/*.yaml (org security-group format: rules are maps keyed by rule
+  # sg/*.yaml (template security-group format: rules are maps keyed by rule
   # name; omitted ports/ip_protocol = all traffic) -> security-groups
   # module shape. cidrs_ipv6 is NOT wired - the module carries no IPv6
   # rules yet.
@@ -144,6 +148,7 @@ locals {
       name              = g.name
       description       = g.description
       attach_to_cluster = try(g.attach_to_cluster, false)
+      tags              = try(g.tags, {})
 
       ingress = [
         for rule_name, rule in try(g.ingress_rules, {}) : {
@@ -188,28 +193,14 @@ locals {
     ]
   }]
 
-  # Rule files are shared config, but CIDRs differ per environment. The
-  # token "@vpc" in any cidrs entry resolves to THIS environment's
-  # VPC CIDR (from the network stack) at plan time.
-  security_groups_resolved = [
-    for g in concat(local.security_groups, local.cluster_ingress_sg) : merge(g, {
-      ingress = [for r in try(g.ingress, []) : merge(r, {
-        cidr_blocks = [for c in try(r.cidr_blocks, []) : c == "@vpc" ? data.terraform_remote_state.network.outputs.vpc_cidr_block : c]
-      })]
-      egress = [for r in try(g.egress, []) : merge(r, {
-        cidr_blocks = [for c in try(r.cidr_blocks, []) : c == "@vpc" ? data.terraform_remote_state.network.outputs.vpc_cidr_block : c]
-      })]
-    })
-  ]
-
-  # Same "@vpc" token for the rules on the EKS-managed shared node SG
-  # (config.yaml: eks.shared_node_ingress_rules; org rule format with
-  # cidrs -> the module's cidr_blocks).
-  node_ingress_rules_resolved = {
+  # Rules on the EKS-managed shared node SG (config.yaml:
+  # eks.shared_node_ingress_rules; template rule format with cidrs -> the
+  # module's cidr_blocks).
+  node_ingress_rules = {
     for name, rule in local.config.eks.shared_node_ingress_rules :
     name => {
       description                   = try(rule.description, "Managed by Terraform")
-      cidr_blocks                   = [for c in try(rule.cidrs, []) : c == "@vpc" ? data.terraform_remote_state.network.outputs.vpc_cidr_block : c]
+      cidr_blocks                   = try(rule.cidrs, [])
       referenced_security_group_ids = try(rule.referenced_security_group_ids, [])
       from_port                     = try(rule.from_port, null)
       to_port                       = try(rule.to_port, null)
@@ -221,12 +212,10 @@ locals {
 module "security_groups" {
   source = "../../../../modules/eks/security-groups"
 
-  name = local.name_prefix
-  # An explicit vpc_id in config.yaml wins (it never does in this public
-  # repo); otherwise the network stack's VPC.
-  vpc_id = try(local.config.vpc_id, null) != null ? local.config.vpc_id : data.terraform_remote_state.network.outputs.vpc_id
+  name   = local.name_prefix
+  vpc_id = local.config.vpc_id
 
-  security_groups = local.security_groups_resolved
+  security_groups = concat(local.security_groups, local.cluster_ingress_sg)
 
   tags = local.tags
 }
@@ -234,16 +223,14 @@ module "security_groups" {
 module "cluster" {
   source = "../../../../modules/eks/cluster"
 
-  name = local.config.cluster_name
-  # Explicit cluster_subnet_ids in config.yaml win (they never do in this
-  # public repo); otherwise the network stack's public subnets.
-  subnet_ids = try(local.config.cluster_subnet_ids, null) != null ? local.config.cluster_subnet_ids : values(data.terraform_remote_state.network.outputs.public_subnet_ids)
+  name       = local.config.cluster_name
+  subnet_ids = local.config.cluster_subnet_ids
 
   security_group_ids = module.security_groups.cluster_security_group_ids
 
   # Strict lookups on purpose: every value must be stated in config.yaml,
   # so a missing or misspelled key fails the plan instead of silently
-  # falling back to a module default (org template shape: flat cluster/
+  # falling back to a module default (template shape: flat cluster/
   # infra keys + the eks: map).
   cluster_version           = local.config.cluster_version
   endpoint_public_access    = local.config.eks.endpoint_public_access
@@ -252,9 +239,8 @@ module "cluster" {
   public_access_cidrs       = local.config.eks.public_access_cidrs
   service_ipv4_cidr         = local.config.eks.service_ipv4_cidr
   create_oidc               = local.config.eks.create_oidc
-  # kms_key_id holds an ALIAS by org rule (this repo is public)
-  secrets_kms_key_alias = local.config.kms_key_id
-  node_ingress_rules    = local.node_ingress_rules_resolved
+  secrets_kms_key_arn       = local.config.kms_key_id
+  node_ingress_rules        = local.node_ingress_rules
 
   authentication_mode                         = local.config.eks.authentication_mode
   bootstrap_cluster_creator_admin_permissions = local.config.eks.bootstrap_cluster_creator_admin_permissions
@@ -270,9 +256,11 @@ module "cluster" {
 # Re-add them as their own change when this cluster goes live.
 
 module "irsa" {
-  source = "../../../../modules/iam"
+  source = "../../../../modules/iam-roles"
 
-  name  = local.name_prefix
+  # No prefix: iam.yaml keys are the FULL role names (template style,
+  # irsa-<org>-<env>-k8s-<workload>).
+  name  = null
   roles = local.irsa_roles
 
   # Straight from the cluster - no remote-state hop, and Terraform orders
@@ -288,13 +276,36 @@ module "node_groups" {
 
   name         = local.name_prefix
   cluster_name = module.cluster.cluster_name
-  # Fallback only - every group carries its own subnet_ids, resolved from
-  # public_instance in its ng/*.yaml file (currently all private; NOTE:
-  # with nat_gateway = none the private subnets have no egress - the open
-  # node-egress decision).
-  subnet_ids = values(data.terraform_remote_state.network.outputs.private_subnet_ids)
 
+  cluster_security_group_id = module.cluster.cluster_security_group_id
+  max_pods                  = local.config.node_max_pods
+
+  # Every group states its own subnet_ids (ng/*.yaml): the PUBLIC subnets
+  # (no NAT; public IPs + IGW are the egress).
   node_groups = local.node_groups
 
+  # SSH to nodes (config.yaml ssh_key_name + node_jump_server_ssh, the
+  # bastion's private IP /32); both null = no remote access.
+  vpc_id           = local.config.vpc_id
+  ssh_key_name     = local.config.ssh_key_name
+  ssh_source_cidrs = local.config.node_jump_server_ssh == null ? [] : [local.config.node_jump_server_ssh]
+
   tags = local.tags
+}
+
+# ng/*.yaml sanity checks that need the whole file set (cross-file rules
+# cannot live in the module's variable validations).
+check "node_group_files" {
+  assert {
+    condition     = alltrue([for g in local.node_group_files : g.use_al2023_ami])
+    error_message = "use_al2023_ami must be true in every ng/*.yaml - AL2 is end-of-support on EKS and has no AMI for this cluster version."
+  }
+
+  assert {
+    condition = alltrue([
+      for g in local.node_group_files :
+      local.node_group_arm[g.name] || !anytrue([for t in g.instance_type_list : can(regex("^[a-z]+[0-9]+g[a-z]*\\.", t))])
+    ])
+    error_message = "A node group must not mix Graviton (ARM) and x86 instance types - one AMI architecture per group."
+  }
 }

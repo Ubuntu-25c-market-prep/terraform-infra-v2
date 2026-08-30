@@ -10,31 +10,35 @@ environment, all values in YAML, CI driven by commit messages.
 ├── .github/workflows/     # plan on branch push, apply on merge - the stack
 │                          # folder comes from the commit message (see below)
 ├── modules/               # Reusable child modules - never run directly
-│   ├── vpc/               # VPC, public+private subnets, NAT, S3 endpoint
+│   ├── vpc/               # VPC, public+private subnets, S3 endpoint (NAT optional, off)
 │   ├── ecr/               # Repositories + lifecycle policies
-│   ├── iam/               # Roles: type service (AWS principals) or irsa
+│   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
 │   ├── ec2/               # SSM-only instances (no SSH) - for the jump host
-│   ├── lb/                # Terraform-owned ALB + ip target groups; pods
+│   ├── alb/               # Terraform-owned ALB + ip target groups; pods
 │   │                      # join via TargetGroupBinding (never Ingress)
+│   ├── nlb/               # Terraform-owned NLB (L4: TCP/UDP/TLS) + ip target
+│   │                      # groups, one listener per group; same binding model
 │   └── eks/
 │       ├── cluster/       # Cluster, OIDC, access entries (SSO patterns)
 │       ├── node-groups/   # Managed node groups
 │       └── security-groups/
 └── resources/
-    ├── global-values.yaml           # org, repo, org-wide tags
+    ├── global-values.yaml           # org, repo, shared tags
     └── us-east-1/
         ├── regional-values.yaml     # region + regional tags
         ├── dev/                     # one complete set of stacks per env
         │   ├── dev-values.yaml      # env name + env tags
-        │   ├── network/             # VPC: 2 public + 2 private subnets, NAT
-        │   ├── ecr/                 # one YAML per repository in config/
-        │   ├── iam/                 # non-cluster IAM roles (config/)
-        │   ├── s3/                  # one YAML per bucket in config/
+        │   ├── network/             # VPC: 2 public + 2 private subnets, no NAT
+        │   ├── ecr/                 # repositories array in config.yaml
+        │   ├── iam-roles/           # non-cluster IAM roles (roles array in config.yaml)
+        │   ├── s3/                  # buckets array in config.yaml
         │   ├── eks/                 # ONE stack: cluster + node groups (ng/)
         │   │                        # + extra SGs (sg/) + identity (iam.yaml)
-        │   └── lb/                  # ALB in front of the cluster - one
-        │                            # YAML per target group in tg/
+        │   ├── alb/                 # ALB in front of the cluster - target
+        │   │                        # groups array in config.yaml
+        │   └── nlb/                 # NLB for L4 traffic (mesh ingress, TCP/
+        │                            # UDP) - target groups array in config.yaml
         ├── uat/                     # same shape, uat values
         └── prod/                    # same shape, prod values
 ```
@@ -63,14 +67,19 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 - **Strict lookups on purpose**: every value a stack uses is stated in
   YAML; a missing key fails the plan instead of silently using a module
   default. `# default:` comments are reference only.
-- **Per-item files**: `ecr/config/`, `s3/config/`, `iam/config/`,
-  `eks/ng/`, `eks/sg/`, `lb/tg/` — one YAML file per repository / bucket /
-  role / node group / security group / target group, merged over that
-  stack's `*_defaults`. `.example` files are inactive documentation.
-- **Cluster identity lives in `eks/iam.yaml`** — access entries (SSO
-  role-name patterns, never ARNs) and IRSA roles for workloads, with
-  ready-to-uncomment blocks for ebs-csi, Velero, external-dns,
-  cert-manager and Bedrock.
+- **Per-item arrays**: repositories, buckets, roles and target groups are
+  arrays in their stack's `config.yaml` (`ecr.repositories`, `s3.buckets`,
+  `iam.roles`, `alb.target_groups`, `nlb.target_groups`), each entry merged
+  over that stack's `*_defaults`; a commented example entry under each
+  array is the template. The eks stack is the exception: node groups and
+  security groups stay one file each under `eks/ng/` and `eks/sg/`
+  (`.example` files are inactive documentation).
+- **Cluster identity lives in `eks/iam.yaml`** — access entries (keyed by
+  ARN, or by a short name resolved via SSO role-name pattern) and IRSA
+  roles for workloads (full names, policies by ARN), with
+  ready-to-uncomment blocks for ebs-csi, the LB controller, Velero,
+  external-dns, cert-manager and Bedrock. The customer-managed policies
+  they reference are declared in the `iam-roles` stack's `policies` array.
 - EKS **addons are not managed here** — Flux CD owns them (see
   `resources/*/*/eks/README.md`).
 
@@ -79,13 +88,19 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 | | dev | uat | prod |
 |---|---|---|---|
 | VPC | 10.0.0.0/16 | 10.2.0.0/16 | 10.1.0.0/16 |
-| NAT | single | single | per AZ |
+| NAT | none | none | none |
 | Cluster API | public | private + VPC-only public | private + VPC-only public |
 | Nodes (default) | t3.medium 1/2/3 | t3.large 1/2/4 | m5.large 2/3/5 |
 | ECR tags | mutable | immutable | immutable |
 
-Nodes run in the private subnets in all environments; public subnets hold
-NAT and internet-facing load balancers (tagged for controller discovery).
+Nodes run in the public subnets in all environments, alongside the
+bastion and internet-facing load balancers: no NAT gateway anywhere, so
+`map_public_ip_on_launch` gives nodes public IPs and internet egress via
+the IGW, with security groups as the only inbound barrier. The private
+subnets hold only the control-plane ENIs and have no internet egress
+(S3 via the gateway endpoint only). The `nat_gateway:` lines in each
+`network/config.yaml` are commented out and can be restored per env if
+private egress is ever needed.
 
 ## State
 
@@ -112,9 +127,12 @@ running init with the real backend requires passing the exact same key.
 - **State bucket and the CI OIDC roles** — referenced only via Actions
   variables (existing roles, modified ones, or new ones all work), so no
   pipeline change can touch CI's own identity or the state.
-- **Account ids, IAM ARNs, personal IPs** — this repo is public. KMS keys
-  are referenced by alias, SSO principals by name pattern, bucket names
-  get the account id appended at plan time.
+- **Personal/office IPs and secrets** (private keys, tokens). Resource
+  ids and ARNs (VPC, subnets, security groups, KMS keys, ACM
+  certificates, the OIDC provider) ARE committed: stacks read no remote
+  state, each states the ids it needs in its `config.yaml`. Where a
+  lookup is still offered (KMS by alias, SSO roles by name pattern) it is
+  a convenience, not a rule.
 
 ## Local runs
 
@@ -126,5 +144,26 @@ terraform plan
 
 The eks stack's access-entry lookup needs IAM read on the SSO path -
 it works in CI and as PlatformAdmin; PlatformEngineer is denied locally.
-Apply order within an env: network first (subnets before nodes), then eks;
-ecr/s3/iam are independent.
+
+## Apply order and id hand-off
+
+Stacks never read each other's state. Ids flow between them through
+`config.yaml`, pasted from the previous stack's outputs - once per env,
+and again only if the resource is recreated:
+
+1. `network` → outputs `vpc_id`, `public_subnet_ids`, `private_subnet_ids`
+2. paste into `eks/config.yaml` (+ `eks/ng/*.yaml`), `bastion/config.yaml`,
+   `alb/config.yaml`, `nlb/config.yaml`
+3. `eks` → outputs `cluster_security_group_id`, `oidc_provider_arn`,
+   `oidc_issuer_url`
+4. paste into `alb`/`nlb` (`backend_security_group_id`) and `iam-roles`
+   (`oidc_*`, only needed for irsa roles)
+4b. IRSA policies: `iam-roles` (`policies` array) → output `policy_arns` →
+   paste into `eks/iam.yaml` `attached_policies`, then apply `eks`
+5. `bastion`, `alb`, `nlb`, `iam-roles` in any order; `ecr`/`s3` anytime
+6. SSH to nodes: `bastion` → output `private_ips` → paste as a /32 into
+   `eks/config.yaml` `node_jump_server_ssh` (`ssh_key_name` is already the
+   bastion key pair) **before** the node groups are first created - remote
+   access is creation-only, so `bastion` applies before `eks`
+
+`REPLACE-ME` placeholders fail the plan on purpose until real ids are in.

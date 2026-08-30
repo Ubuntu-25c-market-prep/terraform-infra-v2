@@ -1,0 +1,102 @@
+# Non-cluster IAM: standalone policies (policies) and roles (roles), each
+# merged over role_defaults. Role types: service (AWS principals) or
+# irsa (ONE Kubernetes service account). README.md "Keys".
+iam:
+  oidc_provider_arn: null # eks stack outputs; required only for irsa roles
+  oidc_issuer_url: null
+
+  # Customer-managed policies, named <org>-<env>-<name>. Attach by ARN
+  # (policy_arns here, attached_policies in eks/iam.yaml) - read the ARN
+  # from the policy_arns output after apply.
+  policies: []
+  # policies:
+  #   - name: AWSLoadBalancerControllerBindingPolicy # binding-only: Terraform owns the LBs
+  #     statements:
+  #       - actions:
+  #           - elasticloadbalancing:DescribeTargetGroups
+  #           - elasticloadbalancing:DescribeTargetGroupAttributes
+  #           - elasticloadbalancing:DescribeTargetHealth
+  #           - elasticloadbalancing:DescribeLoadBalancers
+  #           - elasticloadbalancing:DescribeListeners
+  #           - elasticloadbalancing:DescribeRules
+  #           - elasticloadbalancing:DescribeTags
+  #           - ec2:DescribeInstances
+  #           - ec2:DescribeSubnets
+  #           - ec2:DescribeSecurityGroups
+  #           - ec2:DescribeNetworkInterfaces
+  #           - ec2:DescribeVpcs
+  #           - ec2:DescribeAvailabilityZones
+  #         resources: ["*"]
+  #       - actions:
+  #           - elasticloadbalancing:RegisterTargets
+  #           - elasticloadbalancing:DeregisterTargets
+  #         resources: ["*"] # or the target group ARNs from the alb/nlb outputs
+  #   - name: VeleroPolicy
+  #     statements:
+  #       - actions:
+  #           - ec2:DescribeVolumes
+  #           - ec2:DescribeSnapshots
+  #           - ec2:CreateTags
+  #           - ec2:CreateVolume
+  #           - ec2:CreateSnapshot
+  #           - ec2:DeleteSnapshot
+  #         resources: ["*"]
+  #       - actions:
+  #           - s3:GetObject
+  #           - s3:DeleteObject
+  #           - s3:PutObject
+  #           - s3:AbortMultipartUpload
+  #           - s3:ListMultipartUploadParts
+  #         resources: ["arn:aws:s3:::u25c-dev-velero-<account-id>/*"]
+  #       - actions:
+  #           - s3:ListBucket
+  #         resources: ["arn:aws:s3:::u25c-dev-velero-<account-id>"]
+  #   - name: ExternalDnsPolicy
+  #     statements:
+  #       - actions:
+  #           - route53:ChangeResourceRecordSets
+  #         resources: ["arn:aws:route53:::hostedzone/*"] # narrow to your zone id
+  #       - actions:
+  #           - route53:ListHostedZones
+  #           - route53:ListResourceRecordSets
+  #           - route53:ListTagsForResource
+  #         resources: ["*"]
+  #   - name: CertManagerRoute53Policy
+  #     statements:
+  #       - actions:
+  #           - route53:GetChange
+  #         resources: ["arn:aws:route53:::change/*"]
+  #       - actions:
+  #           - route53:ChangeResourceRecordSets
+  #           - route53:ListResourceRecordSets
+  #         resources: ["arn:aws:route53:::hostedzone/*"] # narrow to your zone id
+  #       - actions:
+  #           - route53:ListHostedZonesByName
+  #         resources: ["*"]
+  #   - name: BedrockInvokePolicy
+  #     statements:
+  #       - actions:
+  #           - bedrock:InvokeModel
+  #           - bedrock:InvokeModelWithResponseStream
+  #         resources: ["*"] # narrow to specific model ARNs
+
+  role_defaults:
+    type: service
+    services: []
+    policy_arns: []
+    policy: []
+
+  roles: []
+  # roles:
+  #   - name: example-service # service role: assumed by an AWS service principal
+  #     services: [ec2.amazonaws.com]
+  #     policy_arns: ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
+  #   - name: example-irsa # irsa role: assumable ONLY by this service account
+  #     type: irsa
+  #     namespace: kube-system
+  #     service_account: example-sa
+  #     policy_arns: ["arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"]
+  #     policy: # inline statements, besides or instead of policy_arns
+  #       - effect: Allow
+  #         actions: ["sqs:ReceiveMessage"]
+  #         resources: ["*"]

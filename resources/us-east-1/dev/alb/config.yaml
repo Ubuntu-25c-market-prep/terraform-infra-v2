@@ -1,0 +1,46 @@
+# Terraform OWNS the ALB (listeners, target groups, SGs); the cluster only
+# fills the target groups via TargetGroupBinding. README.md.
+alb:
+  name: alb
+  vpc_id: vpc-REPLACE-ME                    # network stack output
+  subnet_ids:                               # network stack output; PUBLIC for internet-facing, PRIVATE for internal
+    - subnet-REPLACE-ME-public-a
+    - subnet-REPLACE-ME-public-b
+  backend_security_group_id: sg-REPLACE-ME  # eks stack output cluster_security_group_id
+  internal: false                           # default: false (true = no public IPs; subnet_ids must be private)
+  ingress_cidrs: [0.0.0.0/0]                # default: [0.0.0.0/0]; narrow for internal/admin ALBs
+  ip_address_type: ipv4                     # default: ipv4 | dualstack
+  idle_timeout: 60                          # default: 60 s
+  drop_invalid_header_fields: true          # default: true
+  deletion_protection: false # default: false; MUST be true in prod
+  certificate_arn: null                     # default: null = no HTTPS listener, plain HTTP on :80
+  ssl_policy: ELBSecurityPolicy-TLS13-1-2-2021-06 # default: same (unused while certificate_arn is null)
+
+  target_group_defaults: # shallow merge: an entry's health_check replaces the WHOLE map
+    protocol: HTTP             # pod-side; TLS terminates at the ALB
+    deregistration_delay: 30   # seconds of connection draining
+    health_check:
+      path: /
+      port: traffic-port       # or a port number as a string
+      interval: 15
+      timeout: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      matcher: "200-399"
+
+  target_groups: [] # one entry per service; [] = an ALB that answers 404 to everything
+  # target_groups:
+  #   - name: demo-api
+  #     port: 8080 # the containerPort pods listen on (ip targets)
+  #     routing:
+  #       priority: 10 # lower wins; keep 10 apart; at least one condition below
+  #       path_patterns: ["/api/*"]
+  #       # host_headers: [api.dev.example.com]
+  #     health_check:
+  #       path: /healthz
+  #       port: traffic-port
+  #       interval: 15
+  #       timeout: 5
+  #       healthy_threshold: 2
+  #       unhealthy_threshold: 3
+  #       matcher: "200-399"

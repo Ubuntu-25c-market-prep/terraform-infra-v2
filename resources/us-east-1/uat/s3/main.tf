@@ -13,10 +13,9 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags) },
   )
 
-  buckets = [
-    for f in fileset("${path.module}/config", "*.yaml") :
-    merge(local.config.bucket_defaults, yamldecode(file("${path.module}/config/${f}")))
-  ]
+  # Each entry of config.yaml's buckets array, merged over bucket_defaults
+  # (shallow: a nested map stated in an entry replaces the whole default map).
+  buckets = [for item in local.config.buckets : merge(local.config.bucket_defaults, item)]
 
   name_prefix = "${local.config.org}-${local.config.env}"
 

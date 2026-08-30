@@ -1,10 +1,10 @@
 # Extra security group for the cluster - one SELF-CONTAINED file per group
-# (org format: rules are MAPS keyed by rule name; security_group_defaults
+# (template format: rules are MAPS keyed by rule name; security_group_defaults
 # is gone from config.yaml). attach_to_cluster: true adds the group to the
 # EKS control plane ENIs. A rule's sources are cidrs and/or
-# referenced_security_group_ids; "@vpc" in cidrs resolves to this
-# environment's VPC CIDR at plan time. Omitted from_port/to_port/
-# ip_protocol = all traffic (like default_ipv4 below).
+# referenced_security_group_ids (this environment's VPC CIDR is in
+# network/config.yaml). Omitted from_port/to_port/ip_protocol = all
+# traffic (like default_ipv4 below).
 # Inactive while it ends in .example - copy, drop the suffix, adjust.
 name: cluster-internal
 description: HTTPS to the cluster API from inside the VPC
@@ -17,7 +17,7 @@ ingress_rules:
     to_port: 443
     ip_protocol: tcp
     cidrs:
-      - "@vpc"
+      - 10.1.0.0/16 # this environment's VPC CIDR
     # referenced_security_group_ids: # source by SG id instead of/besides CIDRs
     #   - sg-xxxxxx
 
@@ -25,9 +25,9 @@ egress_rules:
   default_ipv4: # no ports/protocol stated = all traffic
     cidrs:
       - 0.0.0.0/0
-  # default_ipv6: # not wired - the security-groups module has no IPv6 rules yet
+  # default_ipv6: # not wired - the VPC is IPv4-only, an IPv6 rule would match nothing
   #   cidrs_ipv6:
   #     - ::/0
 
-# tags: # not wired - per-group tags are not supported by the module;
-#   cluster-name: u25c-prod-cluster # stack-wide tags come from default_tags
+tags: # extra per-group tags (Org/Env/... come from default_tags)
+  cluster-name: u25c-prod-cluster

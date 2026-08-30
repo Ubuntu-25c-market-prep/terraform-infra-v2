@@ -1,0 +1,50 @@
+# Terraform OWNS the NLB (listeners, target groups, SGs); the cluster only
+# fills the target groups via TargetGroupBinding. README.md.
+nlb:
+  name: nlb
+  vpc_id: vpc-REPLACE-ME                    # network stack output
+  subnet_ids:                               # network stack output; PUBLIC for internet-facing, PRIVATE for internal
+    - subnet-REPLACE-ME-public-a
+    - subnet-REPLACE-ME-public-b
+  backend_security_group_id: sg-REPLACE-ME  # eks stack output cluster_security_group_id
+  internal: false                           # default: false (true = no public IPs; subnet_ids must be private)
+  ingress_cidrs: [0.0.0.0/0]                # default: [0.0.0.0/0]; narrow for internal/admin NLBs
+  ip_address_type: ipv4                     # default: ipv4 | dualstack
+  cross_zone_load_balancing: true           # default: true (off = each AZ only sees its own AZ's pods)
+  deletion_protection: true  # MUST stay true: the DNS name is an external contract (destroy = flip, apply, destroy)
+  certificate_arn: null                     # default: null; only needed for a TLS listener (TLS terminates in the pod otherwise)
+  ssl_policy: ELBSecurityPolicy-TLS13-1-2-2021-06 # default: same (unused while certificate_arn is null)
+
+  target_group_defaults: # shallow merge: an entry's health_check replaces the WHOLE map
+    protocol: TCP              # TCP | UDP | TCP_UDP (TLS is a listener protocol)
+    deregistration_delay: 30   # seconds of connection draining
+    preserve_client_ip: true   # pods see the real client IP; SG rules still reference the NLB SG
+    proxy_protocol_v2: false   # only if the pod-side proxy parses PROXY v2 headers
+    health_check:
+      protocol: TCP            # TCP | HTTP | HTTPS (then path + matcher apply)
+      port: traffic-port       # or a port number as a string
+      path: /                  # ignored for TCP
+      matcher: "200-399"       # ignored for TCP
+      interval: 10
+      timeout: 5               # must be < interval
+      healthy_threshold: 2
+      unhealthy_threshold: 2
+
+  target_groups: [] # one entry per service; [] = an NLB with no listeners
+  # target_groups:
+  #   - name: istio-ingress
+  #     port: 8443 # the containerPort pods listen on (ip targets)
+  #     protocol: TCP
+  #     listener: # one listener per entry, no rules; ports must be unique
+  #       port: 443
+  #       protocol: TCP # TCP | UDP | TCP_UDP | TLS (terminates with certificate_arn)
+  #       # alpn_policy: HTTP2Preferred # TLS only
+  #     health_check:
+  #       protocol: HTTP
+  #       port: "15021"
+  #       path: /healthz/ready
+  #       matcher: "200-399"
+  #       interval: 10
+  #       timeout: 5
+  #       healthy_threshold: 2
+  #       unhealthy_threshold: 2
