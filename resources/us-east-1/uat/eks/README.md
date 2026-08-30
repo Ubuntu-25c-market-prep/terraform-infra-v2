@@ -84,41 +84,32 @@ every key deploys from the file itself. The keys:
   decides public vs private
 - `tags` — extra per-group tags (org tags come from `default_tags`)
 
+Every group launches through a module-made launch template: IMDSv2
+(hop limit 1), gp3 root disk, the cluster SG, and the `node_max_pods`
+user data. A template change rolls the group's nodes.
+
 `name:` in each file is the filename minus the env prefix; the module
-prepends `<org>-<env>-`, so `ng/uat-ng-system-od-us-east-1.yaml` with
-`name: ng-system-od-us-east-1` becomes `u25c-uat-ng-system-od-us-east-1`.
+prepends `<env>-<org>-` (env first, matching the gitops-flux NodePool
+naming), so `ng/uat-ng-system-od-us-east-1.yaml` with
+`name: ng-system-od-us-east-1` becomes `uat-u25c-ng-system-od-us-east-1`.
 
 | Group | Profile | Purpose |
 | --- | --- | --- |
-| `ng-system-od-us-east-1` | t3.large, on-demand, 1/2/4 | kube-system / cluster-critical |
-| `ng-base-spot-us-east-1` | SPOT, 2 instance types, 0/1/4 | general stateless workloads |
-| `ng-elk-od-us-east-1` | t3.large, taint `dedicated=elk` | Elasticsearch / Logstash / Kibana |
-| `ng-monitoring-od-us-east-1` | t3.large, taint `dedicated=monitoring` | Prometheus / Grafana |
-| `ng-istio-od-us-east-1` | t3.large, label only | istiod + ingress gateways |
+| `ng-system-od-us-east-1` | t3.large, on-demand, 1/2/4 | kube-system / cluster-critical / bootstrap floor |
 
 Instance types and sizes are uat-sized judgment calls — adjust freely in
 the group files.
 
-## Tainted pools need matching tolerations in Flux
+## One group on purpose — workload capacity comes from Karpenter
 
-The `elk` and `monitoring` pools carry `NO_SCHEDULE` taints so other
-workloads stay off them. **The Flux-managed releases that should run there
-must set both** — or their pods schedule elsewhere (or nowhere):
-
-```yaml
-# in the HelmRelease values (e.g. kube-prometheus-stack)
-nodeSelector:
-  workload: monitoring
-tolerations:
-  - key: dedicated
-    value: monitoring
-    effect: NoSchedule
-```
-
-Same pattern for ELK with `workload: elk` / `value: elk`. The istio pool has
-a `workload: istio` label but no taint — a `nodeSelector` is enough to pin
-the mesh there; add a taint (like the elk pool) if it should have the nodes
-to itself.
+The system group is the **bootstrap floor**: Flux's controllers, the
+Karpenter controller and CoreDNS run here, because they must exist on
+nodes Karpenter does not manage. All other node capacity is Karpenter
+NodePools, delivered by Flux from `gitops-flux` — the placement contract
+is `ops-program` `docs/node-placement.md` (ADR 0013). The former workload
+groups (base-spot, elk, monitoring, istio) were removed with that split;
+their files remain in git history if Terraform-managed groups are ever
+needed again.
 
 ## Adding a group
 
@@ -134,7 +125,8 @@ changes needed — the stack discovers files via `fileset()`.
 | `cluster_version` | Kubernetes version; `null` = AWS picks the current one |
 | `vpc_id`, `cluster_subnet_ids` | network stack outputs; the control-plane ENIs live in these subnets (private - they carry no public IP and need no internet route); both AZs must be covered |
 | `ssh_key_name` | EC2 key pair for SSH to the nodes - the bastion stack's `key_pair_name`; `null` = no SSH |
-| `node_jump_server_ssh` | the bastion's private IP as a `/32` (bastion output `private_ips`) - the only address allowed on :22. Required with `ssh_key_name`. Both are **creation-only**: changing them replaces the node groups, so paste before the first eks apply |
+| `node_jump_server_ssh` | the bastion's private IP as a `/32` (bastion output `private_ips`) - the only address allowed on :22. Required with `ssh_key_name`. The /32 is an SG rule, changeable anytime; changing `ssh_key_name` makes a new launch-template version and **rolls the nodes** |
+| `node_max_pods` | kubelet pod ceiling on every node group (set via launch-template user data, fixed at boot). ENI default is 17 on small nodes; 110 = EKS recommendation. Requires CNI prefix delegation (Flux side) first; `null` = ENI default |
 | `kms_key_id` | KMS key ARN for envelope encryption of Secrets; `null` = none |
 | `tags` | extra tags on everything in this stack (Org/Env/Component/Repo come from `default_tags`) |
 | `eks.create_oidc` | create the IAM OIDC provider - required for IRSA |

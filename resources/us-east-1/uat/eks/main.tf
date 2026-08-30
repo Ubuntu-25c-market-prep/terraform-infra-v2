@@ -17,7 +17,9 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags, try(local.stack_config.tags, {})) },
   )
 
-  name_prefix = "${local.config.org}-${local.config.env}"
+  # Env first, matching the gitops-flux NodePool naming (cluster and
+  # IRSA names come verbatim from config.yaml/iam.yaml, org-first).
+  name_prefix = "${local.config.env}-${local.config.org}"
 
   # Node groups and extra security groups: one SELF-CONTAINED file each
   # under ng/ resp. sg/, in the template format (no defaults layer). Both are
@@ -274,9 +276,12 @@ module "node_groups" {
 
   name         = local.name_prefix
   cluster_name = module.cluster.cluster_name
-  # Every group states its own subnet_ids (ng/*.yaml). NOTE: with
-  # nat_gateway = none the private subnets have no egress - the open
-  # node-egress decision.
+
+  cluster_security_group_id = module.cluster.cluster_security_group_id
+  max_pods                  = local.config.node_max_pods
+
+  # Every group states its own subnet_ids (ng/*.yaml): the PUBLIC subnets
+  # (no NAT; public IPs + IGW are the egress).
   node_groups = local.node_groups
 
   # SSH to nodes (config.yaml ssh_key_name + node_jump_server_ssh, the

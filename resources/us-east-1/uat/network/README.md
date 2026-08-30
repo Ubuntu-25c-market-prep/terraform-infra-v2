@@ -2,10 +2,13 @@
 
 ## Design
 
-Two public subnets (internet-facing: load balancers, bastion) and two
-private subnets across two AZs. **No NAT gateway**: the private subnets
-have no internet egress at all (~$33/month + per-GiB saved per NAT);
-anything that must reach the internet lives in the public subnets. The
+Two public /20 subnets (EKS nodes and their pods, load balancers,
+bastion) and two private /24 subnets (control-plane ENIs only) across
+two AZs. The public subnets are /20s because the CNI's prefix delegation
+needs whole free /28s - /24s fragment (gitops-flux#142). **No NAT
+gateway**: the private subnets have no internet egress at all
+(~$33/month + per-GiB saved per NAT); anything that must reach the
+internet lives in the public subnets with its own public IP. The
 free S3 **gateway** endpoint keeps S3 - including ECR image layers -
 reachable from every subnet. To restore private egress, uncomment the
 `nat_gateway:` lines in `config.yaml` (one shared NAT = same host subnet

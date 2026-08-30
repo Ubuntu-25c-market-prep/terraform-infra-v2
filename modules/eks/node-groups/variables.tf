@@ -84,6 +84,17 @@ variable "vpc_id" {
   default     = null
 }
 
+variable "cluster_security_group_id" {
+  description = "EKS-managed cluster security group, attached to the nodes via the launch template (a template with its own SGs suppresses the automatic attachment)"
+  type        = string
+}
+
+variable "max_pods" {
+  description = "kubelet --max-pods on every group; null = the ENI-derived default (17 on a t3.medium). 110 is the EKS recommendation up to 30 vCPUs and REQUIRES ENABLE_PREFIX_DELEGATION on the VPC CNI first."
+  type        = number
+  default     = null
+}
+
 variable "addons" {
   description = "EKS addons to install once the node groups exist"
   type = list(object({

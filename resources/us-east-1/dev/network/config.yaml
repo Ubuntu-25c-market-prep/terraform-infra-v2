@@ -11,19 +11,21 @@ map_public_ip_on_launch: true               # default: true (not in the template
 public_subnet_tags: {}  # default: {}; no kubernetes.io/role/* discovery tags until go-live (README)
 private_subnet_tags: {} # default: {}
 
+# Public /20s on purpose: nodes and CNI /28 pod prefixes share them;
+# /24s fragment and starve new nodes of prefixes (gitops-flux#142).
 subnets:
   public-a:
     availability_zone: us-east-1a
-    cidr_suffix: 0.0/24
+    cidr_suffix: 0.0/20
   public-b:
     availability_zone: us-east-1b
-    cidr_suffix: 1.0/24
+    cidr_suffix: 16.0/20
   private-a:
     availability_zone: us-east-1a
-    cidr_suffix: 2.0/24
+    cidr_suffix: 32.0/24
   private-b:
     availability_zone: us-east-1b
-    cidr_suffix: 3.0/24
+    cidr_suffix: 33.0/24
 
 # Route tables drive the subnets: enable_igw: true = PUBLIC. Keys become
 # the route table Name tags. (enable_peering_route, vpc_endpoint,

@@ -93,11 +93,14 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 | Nodes (default) | t3.medium 1/2/3 | t3.large 1/2/4 | m5.large 2/3/5 |
 | ECR tags | mutable | immutable | immutable |
 
-Nodes run in the private subnets in all environments; public subnets hold
-the bastion and internet-facing load balancers. No NAT gateway anywhere:
-private subnets have no internet egress (S3 via the gateway endpoint
-only). The `nat_gateway:` lines in each `network/config.yaml` are
-commented out and can be restored per env if egress is ever needed.
+Nodes run in the public subnets in all environments, alongside the
+bastion and internet-facing load balancers: no NAT gateway anywhere, so
+`map_public_ip_on_launch` gives nodes public IPs and internet egress via
+the IGW, with security groups as the only inbound barrier. The private
+subnets hold only the control-plane ENIs and have no internet egress
+(S3 via the gateway endpoint only). The `nat_gateway:` lines in each
+`network/config.yaml` are commented out and can be restored per env if
+private egress is ever needed.
 
 ## State
 
