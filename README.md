@@ -1,4 +1,4 @@
-# market-prep-project
+# terraform-infra-v2
 
 Terraform infrastructure for the v2 platform: one directory per
 environment, all values in YAML, CI driven by commit messages.
