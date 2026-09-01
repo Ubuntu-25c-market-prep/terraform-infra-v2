@@ -104,8 +104,10 @@ private egress is ever needed.
 
 ## State
 
-State lives in one S3 bucket, and **every state key mirrors this repo's
-layout, prefixed with the repo name**:
+State lives in one S3 bucket **per environment**, named
+`<env>-u25c-tfstate-infra-v2-<account-id>` (each environment's `TFSTATE_BUCKET`
+Actions variable holds its bucket; only dev exists today), and **every state
+key mirrors this repo's layout, prefixed with the repo name**:
 
 ```
 s3://<state-bucket>/<repo-name>/resources/us-east-1/dev/network/terraform.tfstate

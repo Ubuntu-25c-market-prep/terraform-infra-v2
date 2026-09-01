@@ -1,14 +1,3 @@
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
 provider "aws" {
   region = local.config.region
 
@@ -20,7 +9,7 @@ provider "aws" {
     tags = merge(local.config.tags, {
       Org       = local.config.org
       Env       = local.config.env
-      Component = "alb"
+      Component = "ecr"
       Repo      = local.config.repo
     })
   }
