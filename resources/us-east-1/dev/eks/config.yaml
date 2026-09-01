@@ -5,14 +5,15 @@ cluster_name: u25c-dev-cluster # immutable - a change recreates the cluster
 cluster_version: "1.34"        # default: null (AWS picks)
 
 # network stack outputs (private subnets: AWS recommendation for the control-plane ENIs)
-vpc_id: vpc-REPLACE-ME
+vpc_id: vpc-0849e0f6efc203ff5
 cluster_subnet_ids:
-  - subnet-REPLACE-ME-private-a
-  - subnet-REPLACE-ME-private-b
+  - subnet-080404da5ec4970fc # private-a
+  - subnet-0073ae32e957d04ca # private-b
 
-# SSH to nodes via the bastion only; both null = no SSH. Creation-only.
-ssh_key_name: u25c-dev-bastion             # bastion stack output key_pair_name
-node_jump_server_ssh: 10.0.0.REPLACE-ME/32 # bastion private IP /32 (bastion output private_ips)
+# No bastion (skipped): both null = no SSH to nodes; use SSM Session Manager
+# instead. Creation-only - node groups created now never gain SSH later.
+ssh_key_name: null           # bastion stack output key_pair_name, if ever added
+node_jump_server_ssh: null   # bastion private IP /32, if ever added
 
 # kubelet pod ceiling, fixed at boot; default: null = ENI-derived (17 on
 # t3.medium). 110 needs ENABLE_PREFIX_DELEGATION on the CNI (gitops-flux).
