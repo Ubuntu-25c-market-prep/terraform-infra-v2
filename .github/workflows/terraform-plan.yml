@@ -65,13 +65,13 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN_PLAN }} # environment variable, not managed in this repo
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.12.2" # >= 1.10 required for S3 native state locking
 
@@ -80,8 +80,9 @@ jobs:
 
       - name: Terraform Init (${{ needs.target.outputs.dir }})
         working-directory: ${{ needs.target.outputs.dir }}
-        # Bucket is not committed (public repo); the state key mirrors the repo
-        # layout: <bucket>/<repo-name>/<stack-path>/terraform.tfstate
+        # Bucket comes from the environment's TFSTATE_BUCKET variable; the
+        # state key mirrors the repo layout:
+        #   <bucket>/<repo-name>/<stack-path>/terraform.tfstate
         run: |
           terraform init -input=false \
             -backend-config="bucket=${{ vars.TFSTATE_BUCKET }}" \
