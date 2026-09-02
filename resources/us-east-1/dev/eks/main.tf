@@ -293,6 +293,14 @@ module "node_groups" {
   tags = local.tags
 }
 
+# Karpenter discovers SGs by this tag; the EKS-managed cluster SG is the one
+# nodes attach, and aws_ec2_tag is the only way to tag it.
+resource "aws_ec2_tag" "cluster_sg_karpenter_discovery" {
+  resource_id = module.cluster.cluster_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = module.cluster.cluster_name
+}
+
 # ng/*.yaml sanity checks that need the whole file set (cross-file rules
 # cannot live in the module's variable validations).
 check "node_group_files" {
