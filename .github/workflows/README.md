@@ -217,7 +217,7 @@ Fails the plan if any `.tf` file isn't formatted the way `terraform fmt` would w
 - **Plan workflow:** `init` → `validate` (syntax/consistency check, needs no AWS) → `plan`.
 - **Apply workflow:** `init` → `apply -auto-approve`. The `-auto-approve` skips the interactive "yes" prompt; the human review already happened at PR time via the plan output.
 
-The commented `-backend-config` block under `init` is a **placeholder** for the future S3 remote state backend. The bucket name contains the account id, so it is never committed (public repo) — it goes in the `TFSTATE_BUCKET` environment variable (one bucket per account, so per environment). **State keys mirror the repo layout, prefixed with the repo name** — `<repo-name>/resources/us-east-1/dev/network/terraform.tfstate` — so finding a stack's state in S3 is the same path you'd use in the repo, and one bucket can host state for several repos without collisions. The repo name comes from `github.event.repository.name` at runtime; the stack path is the parsed folder, so each stack in each environment gets its own state file automatically.
+The commented `-backend-config` block under `init` is a **placeholder** for the future S3 remote state backend. The bucket name differs per environment, so it lives in the `TFSTATE_BUCKET` environment variable (one bucket per account, so per environment) rather than in the workflow file. **State keys mirror the repo layout, prefixed with the repo name** — `<repo-name>/resources/us-east-1/dev/network/terraform.tfstate` — so finding a stack's state in S3 is the same path you'd use in the repo, and one bucket can host state for several repos without collisions. The repo name comes from `github.event.repository.name` at runtime; the stack path is the parsed folder, so each stack in each environment gets its own state file automatically.
 
 ---
 
@@ -250,7 +250,7 @@ Because commit messages are the source of truth, the workflows only work when th
 | GitHub environments | `dev`, `uat`, `prod` | one per env folder under `resources/<region>/` — names must match the folder names exactly. Required reviewers on `prod`. |
 | Environment variable (in each) | `AWS_ROLE_ARN_PLAN` | read-only role for plans in that env's account — an existing or new role ARN; not managed in this repo |
 | Environment variable (in each) | `AWS_ROLE_ARN_APPLY` | write role for applies in that env's account — an existing or new role ARN; not managed in this repo |
-| Environment variable (in each) | `TFSTATE_BUCKET` | that account's S3 state bucket (contains the account id — never committed); needed once the S3 backend is enabled |
+| Environment variable (in each) | `TFSTATE_BUCKET` | that account's S3 state bucket (per-environment value); needed once the S3 backend is enabled |
 | Workflow `env:` block (hardcoded) | `AWS_REGION` | AWS region — set to `us-east-1`, must match `regional-values.yaml` |
 
 Adding a new env = a new folder under `resources/<region>/` **and** a GitHub environment of the same name with its three variables. Nothing in the workflow files changes.

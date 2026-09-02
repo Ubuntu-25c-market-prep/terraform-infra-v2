@@ -80,8 +80,9 @@ jobs:
 
       - name: Terraform Init (${{ needs.target.outputs.dir }})
         working-directory: ${{ needs.target.outputs.dir }}
-        # Bucket is not committed (public repo); the state key mirrors the repo
-        # layout: <bucket>/<repo-name>/<stack-path>/terraform.tfstate
+        # Bucket comes from the environment's TFSTATE_BUCKET variable; the
+        # state key mirrors the repo layout:
+        #   <bucket>/<repo-name>/<stack-path>/terraform.tfstate
         run: |
           terraform init -input=false \
             -backend-config="bucket=${{ vars.TFSTATE_BUCKET }}" \
