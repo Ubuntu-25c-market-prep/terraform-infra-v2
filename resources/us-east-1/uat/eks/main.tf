@@ -237,11 +237,12 @@ module "cluster" {
   endpoint_public_access    = local.config.eks.endpoint_public_access
   endpoint_private_access   = local.config.eks.endpoint_private_access
   enabled_cluster_log_types = local.config.eks.enabled_log_types
-  public_access_cidrs       = local.config.eks.public_access_cidrs
-  service_ipv4_cidr         = local.config.eks.service_ipv4_cidr
-  create_oidc               = local.config.eks.create_oidc
-  secrets_kms_key_arn       = local.config.kms_key_id
-  node_ingress_rules        = local.node_ingress_rules
+  # Sent only while the public endpoint is on (AWS keeps 0.0.0.0/0 otherwise)
+  public_access_cidrs = local.config.eks.endpoint_public_access ? local.config.eks.public_access_cidrs : ["0.0.0.0/0"]
+  service_ipv4_cidr   = local.config.eks.service_ipv4_cidr
+  create_oidc         = local.config.eks.create_oidc
+  secrets_kms_key_arn = local.config.kms_key_id
+  node_ingress_rules  = local.node_ingress_rules
 
   authentication_mode                         = local.config.eks.authentication_mode
   bootstrap_cluster_creator_admin_permissions = local.config.eks.bootstrap_cluster_creator_admin_permissions

@@ -13,7 +13,7 @@ cluster_subnet_ids:
 # SSH to nodes via the bastion only (creation-only: node groups made without
 # it never gain SSH). The key pair name is the bastion stack's `name`.
 ssh_key_name: dev-bastion-us-east-1            # bastion stack output key_pair_name
-node_jump_server_ssh: 10.1.0.REPLACE-ME/32 # bastion private IP /32 (bastion output private_ips)
+node_jump_server_ssh: 10.1.12.214/32          # bastion private IP /32 (bastion output private_ips)
 
 # kubelet pod ceiling, fixed at boot; default: null = ENI-derived (17 on
 # t3.medium). 110 needs ENABLE_PREFIX_DELEGATION on the CNI (gitops-flux).
@@ -41,7 +41,7 @@ eks:
   cluster_ingress_rules:
     allow_443_from_bastion:
       description: Kubernetes API from the bastion
-      referenced_security_group_ids: [sg-REPLACE-ME] # bastion stack output security_group_id
+      referenced_security_group_ids: [sg-08e9a705f1898047e] # bastion stack output security_group_id
       from_port: 443
       to_port: 443
       ip_protocol: tcp
