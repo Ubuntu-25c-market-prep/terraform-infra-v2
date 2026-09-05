@@ -3,12 +3,12 @@
 resource "aws_security_group" "ssh" {
   count = var.ssh_key_name == null ? 0 : 1
 
-  name        = "${var.name}-node-ssh-sg"
+  name        = "${var.name}-node-ssh"
   description = "SSH to the nodes from the jump server"
   vpc_id      = var.vpc_id
 
   tags = merge(var.tags, {
-    Name = "${var.name}-node-ssh-sg"
+    Name = "${var.name}-node-ssh"
   })
 
   # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.

@@ -1,5 +1,5 @@
 variable "name" {
-  description = "The cluster name: prefixes the node IAM role (<name>-node-role) and the SSH security group (<name>-node-ssh-sg). Node groups carry their own full names."
+  description = "The cluster name: prefixes the node IAM role (<name>-node) and the SSH security group (<name>-node-ssh). Node groups carry their own full names."
   type        = string
 }
 

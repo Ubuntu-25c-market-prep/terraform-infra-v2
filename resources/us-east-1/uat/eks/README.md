@@ -29,7 +29,7 @@ before Flux runs.
 
 The cluster is `<env>-eks-<region>` (`uat-eks-us-east-1`, README "Naming")
 and prefixes what it owns: `uat-eks-us-east-1-role` (cluster role),
-`uat-eks-us-east-1-node-role`, `uat-eks-us-east-1-node-ssh-sg`, and every
+`uat-eks-us-east-1-node`, `uat-eks-us-east-1-node-ssh`, and every
 extra security group (`uat-eks-us-east-1-cluster-ingress`). Node groups are
 `<env>-<ng file name>` (`uat-ng-system-od-us-east-1`); IRSA roles
 `<env>-irsa-<workload>-<region>`. Changing `cluster_name` recreates the

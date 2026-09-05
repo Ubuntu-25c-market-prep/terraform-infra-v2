@@ -60,7 +60,7 @@ apply runs there. One stack per PR. Full walkthrough:
 
 Resources are named `<env>-<component>-<region>` - `dev-vpc-us-east-1`,
 `dev-eks-us-east-1`, `dev-bastion-us-east-1`, `dev-alb-us-east-1` - with
-the parts a component owns appended (`dev-eks-us-east-1-node-role`,
+the parts a component owns appended (`dev-eks-us-east-1-node`,
 `dev-vpc-us-east-1-public-a`). The org is not in the name: every
 resource carries it as the `Org` default tag. Exceptions: IRSA roles
 (`<env>-irsa-<workload>-<region>`), node groups (`<env>-ng-<pool>-<region>`,

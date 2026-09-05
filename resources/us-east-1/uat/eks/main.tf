@@ -276,7 +276,7 @@ module "irsa" {
 module "node_groups" {
   source = "../../../../modules/eks/node-groups"
 
-  name         = module.cluster.cluster_name # <cluster>-node-role, <cluster>-node-ssh-sg
+  name         = module.cluster.cluster_name # <cluster>-node, <cluster>-node-ssh
   cluster_name = module.cluster.cluster_name
 
   cluster_security_group_id = module.cluster.cluster_security_group_id

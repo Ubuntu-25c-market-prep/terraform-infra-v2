@@ -10,11 +10,11 @@ data "aws_iam_policy_document" "node_assume_role" {
 }
 
 resource "aws_iam_role" "node" {
-  name               = "${var.name}-node-role"
+  name               = "${var.name}-node"
   assume_role_policy = data.aws_iam_policy_document.node_assume_role.json
 
   tags = merge(var.tags, {
-    Name = "${var.name}-node-role"
+    Name = "${var.name}-node"
   })
 }
 
