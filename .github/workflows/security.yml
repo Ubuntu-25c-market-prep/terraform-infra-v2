@@ -1,8 +1,4 @@
 name: Security
-
-# The org's shared scan (gitleaks + forbidden-files + trivy), called the
-# same way as in infra-aws. Findings land in the Security tab.
-
 on:
   pull_request:
   push:
