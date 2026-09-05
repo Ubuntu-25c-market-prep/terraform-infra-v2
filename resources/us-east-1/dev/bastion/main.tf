@@ -13,8 +13,6 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags) },
   )
 
-  name_prefix = "${local.config.org}-${local.config.env}"
-
   # Org/Env/Component/Repo are added by the provider's default_tags
   tags = local.config.tags
 }
@@ -24,12 +22,13 @@ locals {
 module "bastion" {
   source = "../../../../modules/bastion"
 
-  name   = local.name_prefix
+  name   = local.config.name # <env>-bastion-<region> (config.yaml)
   vpc_id = local.config.vpc_id
 
   # Strict lookups on purpose: every value must be stated in config.yaml,
   # so a missing or misspelled key fails the plan instead of silently
   # falling back to a module default.
+  enable_ssm            = local.config.enable_ssm
   create_security_group = local.config.create_security_group
   key_name              = local.config.key_name
   ssh_public_key        = local.config.ssh_public_key

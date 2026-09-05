@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Prefix for instance, key pair and security group names (usually <org>-<env>)"
+  description = "Name of the bastion security group and key pair, <env>-bastion-<region> (instances carry their own full name)"
   type        = string
 }
 
@@ -26,6 +26,13 @@ variable "instances" {
     condition     = alltrue([for i in var.instances : i.root_volume_size > 0])
     error_message = "root_volume_size must be a positive number of GiB."
   }
+}
+
+variable "enable_ssm" {
+  description = "Instance profile with AmazonSSMManagedInstanceCore: Session Manager shell and SSH-over-SSM, no inbound port needed"
+  type        = bool
+  default     = true
+  nullable    = false
 }
 
 variable "create_security_group" {
@@ -55,13 +62,13 @@ variable "key_name" {
 }
 
 variable "ssh_public_key" {
-  description = "PUBLIC key material (e.g. 'ssh-ed25519 AAAA...') - safe to commit, only the private half is secret. The module creates key pair <name>-bastion from it. Mutually exclusive with key_name."
+  description = "PUBLIC key material (e.g. 'ssh-ed25519 AAAA...') - safe to commit, only the private half is secret. The module creates key pair <name> from it. Mutually exclusive with key_name."
   type        = string
   default     = null
 }
 
 variable "ssh_ingress_cidrs" {
-  description = "CIDRs allowed to SSH (port 22) into the module-created security group; [] = no SSH ingress rule"
+  description = "CIDRs allowed to SSH (port 22) into the module-created security group; [] = no inbound rule at all (SSH goes over SSM)"
   type        = list(string)
   default     = []
   nullable    = false
