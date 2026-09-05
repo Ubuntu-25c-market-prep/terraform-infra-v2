@@ -37,9 +37,9 @@ service_accounts:
   dev-irsa-ebs-csi-controller-us-east-1:
     namespace_service_account: kube-system/ebs-csi-controller-sa
     attached_policies: ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
-  # dev-irsa-aws-load-balancer-controller-us-east-1: # binding-only, Terraform owns the LBs; ARN from the iam-roles stack's policy_arns output (policy is active there)
-  #   namespace_service_account: kube-system/aws-load-balancer-controller
-  #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-AWSLoadBalancerControllerBindingPolicy-us-east-1"]
+  dev-irsa-aws-load-balancer-controller-us-east-1: # binding-only, Terraform owns the LBs (iam-roles stack policy_arns output)
+    namespace_service_account: kube-system/aws-load-balancer-controller
+    attached_policies: ["arn:aws:iam::808540602855:policy/dev-AWSLoadBalancerControllerBindingPolicy-us-east-1"]
   # dev-irsa-velero-us-east-1: # needs the s3 stack bucket first
   #   namespace_service_account: velero/velero
   #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-VeleroPolicy-us-east-1"]
