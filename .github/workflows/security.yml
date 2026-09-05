@@ -1,0 +1,19 @@
+name: Security
+
+# The org's shared scan (gitleaks + forbidden-files + trivy), called the
+# same way as in infra-aws. Findings land in the Security tab.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    uses: Ubuntu-25c-market-prep/.github/.github/workflows/security-scan.yml@main
