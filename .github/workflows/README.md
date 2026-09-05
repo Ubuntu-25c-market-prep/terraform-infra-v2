@@ -1,16 +1,12 @@
 # Terraform CI/CD Workflows
 
-> **Currently DISABLED**: both workflow files are fully commented out so
-> nothing can plan or apply while the code is still being built. Remove
-> the leading `# ` from every line (below each file's header note) to
-> re-enable them.
-
 Two workflows automate Terraform for this repo:
 
 | File | Trigger | What it runs |
 |---|---|---|
 | `terraform-plan.yml` | Push to any branch **except** `main` | `terraform init` → `validate` → `plan` |
 | `terraform-apply.yml` | Push to `main` (i.e. a merge) | `terraform init` → `apply` |
+| `security.yml` | PRs, push to `main`, weekly | the org's shared `security-scan.yml` (gitleaks, forbidden files, trivy) |
 
 Both read **which stack folder to run Terraform in from the commit message**, using this convention:
 
