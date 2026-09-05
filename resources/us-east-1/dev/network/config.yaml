@@ -17,7 +17,7 @@ gateway_endpoints: [s3, dynamodb]
 # subnets (no NAT), a private-subnet node would have no egress.
 public_subnet_tags:
   kubernetes.io/role/elb: "1"
-  karpenter.sh/discovery: u25c-dev-cluster
+  karpenter.sh/discovery: dev-eks-us-east-1
 private_subnet_tags:
   kubernetes.io/role/internal-elb: "1"
 
