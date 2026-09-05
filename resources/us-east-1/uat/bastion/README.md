@@ -15,9 +15,10 @@ Terraform.
 
 | Key | Meaning |
 |---|---|
+| `name` | `<env>-bastion-<region>` (`uat-bastion-us-east-1`): the security group and key pair name; each instance states its own full name |
 | `vpc_id` | network stack output |
 | `create_security_group` | create the bastion SG (SSH in from `ssh_ingress_cidrs`, out per `egress_rules`) |
-| `ssh_public_key` | the team's **public** key; Terraform creates the key pair `<org>-<env>-bastion` from it. Only the private half is secret |
+| `ssh_public_key` | the team's **public** key; Terraform creates the key pair named `name` from it. Only the private half is secret |
 | `key_name` | use an existing EC2 key pair instead (set `ssh_public_key: null`) |
 | `ssh_ingress_cidrs` | who may SSH in; keep generic, narrow at plan time in CI |
 | `egress_rules` | deliberately narrow: SSH inside the VPC and HTTPS out for updates. DNS/NTP use link-local resolvers and need no rule |

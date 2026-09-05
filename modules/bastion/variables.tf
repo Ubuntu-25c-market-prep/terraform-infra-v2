@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Prefix for instance, key pair and security group names (usually <org>-<env>)"
+  description = "Name of the bastion security group and key pair, <env>-bastion-<region> (instances carry their own full name)"
   type        = string
 }
 
@@ -55,7 +55,7 @@ variable "key_name" {
 }
 
 variable "ssh_public_key" {
-  description = "PUBLIC key material (e.g. 'ssh-ed25519 AAAA...') - safe to commit, only the private half is secret. The module creates key pair <name>-bastion from it. Mutually exclusive with key_name."
+  description = "PUBLIC key material (e.g. 'ssh-ed25519 AAAA...') - safe to commit, only the private half is secret. The module creates key pair <name> from it. Mutually exclusive with key_name."
   type        = string
   default     = null
 }

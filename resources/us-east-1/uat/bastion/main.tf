@@ -13,8 +13,6 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags) },
   )
 
-  name_prefix = "${local.config.org}-${local.config.env}"
-
   # Org/Env/Component/Repo are added by the provider's default_tags
   tags = local.config.tags
 }
@@ -24,7 +22,7 @@ locals {
 module "bastion" {
   source = "../../../../modules/bastion"
 
-  name   = local.name_prefix
+  name   = local.config.name # <env>-bastion-<region> (config.yaml)
   vpc_id = local.config.vpc_id
 
   # Strict lookups on purpose: every value must be stated in config.yaml,

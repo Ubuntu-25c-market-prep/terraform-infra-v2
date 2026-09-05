@@ -5,7 +5,7 @@
 resource "aws_security_group" "this" {
   count = var.create_security_group ? 1 : 0
 
-  name        = "${var.name}-bastion"
+  name        = var.name
   description = "SSH ingress and stated egress for the bastion host"
   vpc_id      = var.vpc_id
 
@@ -35,7 +35,7 @@ resource "aws_security_group" "this" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.name}-bastion"
+    Name = var.name
   })
 
   lifecycle {

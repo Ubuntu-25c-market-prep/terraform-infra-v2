@@ -33,7 +33,7 @@ resource "aws_instance" "this" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.name}-${each.value.name}"
+    Name = each.value.name # full name from config, e.g. dev-bastion-us-east-1
   })
 
   # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
