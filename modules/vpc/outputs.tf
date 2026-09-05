@@ -38,7 +38,7 @@ output "public_route_table_id" {
   value       = aws_route_table.public.id
 }
 
-output "s3_gateway_endpoint_id" {
-  description = "ID of the S3 gateway endpoint (null when disabled)"
-  value       = one(aws_vpc_endpoint.s3[*].id)
+output "gateway_endpoint_ids" {
+  description = "Map of gateway endpoint service (s3, dynamodb) to endpoint ID (empty when disabled)"
+  value       = { for svc, ep in aws_vpc_endpoint.gateway : svc => ep.id }
 }

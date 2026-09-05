@@ -80,9 +80,10 @@ locals {
     length(local.nat_host_subnets) == 1 ? "single" : "per_az"
   )
 
-  # S3 gateway endpoint: the vpc module wires it to every route table or
-  # none - any enable_endpoint_route: true turns it on.
-  s3_gateway_endpoint = anytrue([
+  # Gateway endpoints (config gateway_endpoints): the vpc module wires them
+  # to every route table or none - any enable_endpoint_route: true turns
+  # them on.
+  gateway_endpoints_enabled = anytrue([
     for rt in values(local.config.route_tables) : try(rt.enable_endpoint_route, false)
   ])
 }
@@ -101,7 +102,8 @@ module "vpc" {
   enable_network_address_usage_metrics = local.config.enable_network_address_usage_metrics
   map_public_ip_on_launch              = local.config.map_public_ip_on_launch
   instance_tenancy                     = local.config.instance_tenancy
-  enable_s3_gateway_endpoint           = local.s3_gateway_endpoint
+  enable_gateway_endpoints             = local.gateway_endpoints_enabled
+  gateway_endpoints                    = local.config.gateway_endpoints
 
   public_subnets  = local.public_subnets
   private_subnets = local.private_subnets

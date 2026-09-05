@@ -8,6 +8,11 @@ enable_dns_support: true                    # default: true
 enable_network_address_usage_metrics: false # default: false
 map_public_ip_on_launch: true               # default: true (not in the template)
 
+# Free gateway endpoints (not in the template): s3 (ECR layers too) and
+# dynamodb, on every route table with enable_endpoint_route: true.
+# Everything else is a billed interface endpoint - add deliberately.
+gateway_endpoints: [s3, dynamodb]
+
 # karpenter.sh/discovery is public-only on purpose: nodes live in public
 # subnets (no NAT), a private-subnet node would have no egress.
 public_subnet_tags:

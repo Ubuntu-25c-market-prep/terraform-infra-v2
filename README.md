@@ -10,7 +10,7 @@ environment, all values in YAML, CI driven by commit messages.
 ├── .github/workflows/     # plan on branch push, apply on merge - the stack
 │                          # folder comes from the commit message (see below)
 ├── modules/               # Reusable child modules - never run directly
-│   ├── vpc/               # VPC, public+private subnets, S3 endpoint (NAT optional, off)
+│   ├── vpc/               # VPC, public+private subnets, S3+DynamoDB gateway endpoints (NAT optional, off)
 │   ├── ecr/               # Repositories + lifecycle policies
 │   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
@@ -110,7 +110,7 @@ bastion and internet-facing load balancers: no NAT gateway anywhere, so
 `map_public_ip_on_launch` gives nodes public IPs and internet egress via
 the IGW, with security groups as the only inbound barrier. The private
 subnets hold only the control-plane ENIs and have no internet egress
-(S3 via the gateway endpoint only). The `nat_gateway:` lines in each
+(S3 and DynamoDB via the free gateway endpoints only). The `nat_gateway:` lines in each
 `network/config.yaml` are commented out and can be restored per env if
 private egress is ever needed.
 

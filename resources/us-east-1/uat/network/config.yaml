@@ -8,6 +8,11 @@ enable_dns_support: true                    # default: true
 enable_network_address_usage_metrics: false # default: false
 map_public_ip_on_launch: true               # default: true (not in the template)
 
+# Free gateway endpoints (not in the template): s3 (ECR layers too) and
+# dynamodb, on every route table with enable_endpoint_route: true.
+# Everything else is a billed interface endpoint - add deliberately.
+gateway_endpoints: [s3, dynamodb]
+
 public_subnet_tags: {}  # default: {}; no kubernetes.io/role/* discovery tags until go-live (README)
 private_subnet_tags: {} # default: {}
 

@@ -143,9 +143,21 @@ variable "map_public_ip_on_launch" {
   nullable    = false
 }
 
-variable "enable_s3_gateway_endpoint" {
-  description = "Create an S3 gateway endpoint on the public route table"
+variable "enable_gateway_endpoints" {
+  description = "Create the gateway endpoints listed in gateway_endpoints and wire them into every route table"
   type        = bool
   default     = true
   nullable    = false
+}
+
+variable "gateway_endpoints" {
+  description = "Gateway endpoint services to create - s3 and/or dynamodb, the only free endpoint type (everything else is a billed interface endpoint)"
+  type        = list(string)
+  default     = ["s3"]
+  nullable    = false
+
+  validation {
+    condition     = alltrue([for e in var.gateway_endpoints : contains(["s3", "dynamodb"], e)])
+    error_message = "gateway_endpoints may only contain s3 and dynamodb - the only services with (free) gateway endpoints."
+  }
 }
