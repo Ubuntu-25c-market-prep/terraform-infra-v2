@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Prefix for node group and IAM role names (usually the cluster name)"
+  description = "The cluster name: prefixes the node IAM role (<name>-node) and the SSH security group (<name>-node-ssh). Node groups carry their own full names."
   type        = string
 }
 
@@ -17,7 +17,7 @@ variable "subnet_ids" {
 variable "node_groups" {
   description = "Managed node groups to create"
   type = list(object({
-    name           = string
+    name           = string                 # full node group name, e.g. dev-ng-system-od-us-east-1
     subnet_ids     = optional(list(string)) # null = the module-wide subnet_ids
     instance_types = optional(list(string), ["t3.medium"])
     capacity_type  = optional(string, "ON_DEMAND")

@@ -28,30 +28,31 @@ access_entries:
   #   role_name: CHANGE_ME-example-team
   #   kubernetes_groups: [example-team-cluster]
 
-# Keyed by the FULL role name (irsa-<org>-<env>-k8s-<workload>, used
-# verbatim). namespace_service_account = <namespace>/<service_account>.
+# Keyed by the FULL role name (<env>-irsa-<workload>-<region>, used
+# verbatim; the region is in the name because an IRSA role is bound to
+# this cluster's OIDC provider). namespace_service_account = <namespace>/<service_account>.
 # attached_policies: AWS-managed ARNs verbatim; customer-managed ones
 # from the iam-roles stack (policies array -> policy_arns output).
 service_accounts: {}
 # service_accounts:
-#   irsa-u25c-prod-k8s-ebs-csi-controller:
+#   prod-irsa-ebs-csi-controller-us-east-1:
 #     namespace_service_account: kube-system/ebs-csi-controller-sa
 #     attached_policies: ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
-#   irsa-u25c-prod-k8s-aws-load-balancer-controller: # binding-only, Terraform owns the LBs
+#   prod-irsa-aws-load-balancer-controller-us-east-1: # binding-only, Terraform owns the LBs; ARN from the iam-roles stack's policy_arns output (policy is active there)
 #     namespace_service_account: kube-system/aws-load-balancer-controller
-#     attached_policies: ["arn:aws:iam::<account-id>:policy/REPLACE-ME-AWSLoadBalancerControllerBindingPolicy"]
-#   irsa-u25c-prod-k8s-velero: # needs the s3 stack bucket first
+#     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-AWSLoadBalancerControllerBindingPolicy-us-east-1"]
+#   prod-irsa-velero-us-east-1: # needs the s3 stack bucket first
 #     namespace_service_account: velero/velero
-#     attached_policies: ["arn:aws:iam::<account-id>:policy/REPLACE-ME-VeleroPolicy"]
-#   irsa-u25c-prod-k8s-external-dns:
+#     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-VeleroPolicy-us-east-1"]
+#   prod-irsa-external-dns-us-east-1:
 #     namespace_service_account: external-dns/external-dns
-#     attached_policies: ["arn:aws:iam::<account-id>:policy/REPLACE-ME-ExternalDnsPolicy"]
-#   irsa-u25c-prod-k8s-cert-manager: # only if DNS01 via Route53
+#     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-ExternalDnsPolicy-us-east-1"]
+#   prod-irsa-cert-manager-us-east-1: # only if DNS01 via Route53
 #     namespace_service_account: cert-manager/cert-manager
-#     attached_policies: ["arn:aws:iam::<account-id>:policy/REPLACE-ME-CertManagerRoute53Policy"]
-#   irsa-u25c-prod-k8s-bedrock-invoke:
+#     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-CertManagerRoute53Policy-us-east-1"]
+#   prod-irsa-bedrock-invoke-us-east-1:
 #     namespace_service_account: CHANGE_ME-app-namespace/CHANGE_ME-app-sa
-#     attached_policies: ["arn:aws:iam::<account-id>:policy/REPLACE-ME-BedrockInvokePolicy"]
+#     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-BedrockInvokePolicy-us-east-1"]
 
 # Karpenter is NOT just an IRSA role (discovery tags, node role, SQS
 # queue) - lands as its own change; no discovery tags until then.

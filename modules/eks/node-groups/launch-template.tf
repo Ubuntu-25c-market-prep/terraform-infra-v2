@@ -4,7 +4,7 @@
 resource "aws_launch_template" "node" {
   for_each = local.node_groups
 
-  name_prefix = "${var.name}-${each.value.name}-"
+  name_prefix = "${each.value.name}-"
 
   # A template with its own SGs suppresses the automatic cluster-SG
   # attachment - list it explicitly or control-plane traffic breaks.
@@ -37,7 +37,7 @@ resource "aws_launch_template" "node" {
     resource_type = "instance"
 
     tags = merge(var.tags, each.value.tags, {
-      Name = "${var.name}-${each.value.name}"
+      Name = each.value.name
     })
   }
 
@@ -62,6 +62,6 @@ resource "aws_launch_template" "node" {
   )
 
   tags = merge(var.tags, {
-    Name = "${var.name}-${each.value.name}"
+    Name = each.value.name
   })
 }

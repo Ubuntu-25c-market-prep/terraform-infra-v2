@@ -1,6 +1,6 @@
 # System pool: kube-system / cluster-critical workloads.
 # Self-contained file (template node-group format) - every key deploys
-# from here. Final EKS name: <env>-<org>-<name> (uat-u25c-ng-system-od-us-east-1).
+# from here. Final EKS name: <env>-<name> = this file's name (uat-ng-system-od-us-east-1).
 name: ng-system-od-us-east-1
 
 instance_type_list:

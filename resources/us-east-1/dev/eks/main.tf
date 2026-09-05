@@ -17,9 +17,9 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags, try(local.stack_config.tags, {})) },
   )
 
-  # Env first, matching the gitops-flux NodePool naming (cluster and
-  # IRSA names come verbatim from config.yaml/iam.yaml, org-first).
-  name_prefix = "${local.config.env}-${local.config.org}"
+  # Naming (README "Naming"): the cluster name (<env>-eks-<region>) prefixes
+  # everything the cluster owns - node role, SSH SG, extra SGs; node groups
+  # are <env>-<ng file name>; IRSA roles come verbatim from iam.yaml.
 
   # Node groups and extra security groups: one SELF-CONTAINED file each
   # under ng/ resp. sg/, in the template format (no defaults layer). Both are
@@ -106,10 +106,11 @@ locals {
   # ng/*.yaml (template node-group format) -> node-groups module shape.
   # Strict lookups on purpose (same rule as config.yaml): name, sizing and
   # the use_* switches and subnet_ids must be stated in every file; only
-  # k8s_labels, k8s_taints and tags may be omitted.
+  # k8s_labels, k8s_taints and tags may be omitted. The EKS name is
+  # <env>-<name>, i.e. the file name (dev-ng-system-od-us-east-1).
   node_groups = [
     for g in local.node_group_files : {
-      name           = g.name
+      name           = "${local.config.env}-${g.name}"
       instance_types = g.instance_type_list
       capacity_type  = g.use_on_demand_instance ? "ON_DEMAND" : "SPOT"
       # Architecture follows the instance types: a Graviton family has a
@@ -212,7 +213,7 @@ locals {
 module "security_groups" {
   source = "../../../../modules/eks/security-groups"
 
-  name   = local.name_prefix
+  name   = local.config.cluster_name # SGs: <cluster>-<sg name>
   vpc_id = local.config.vpc_id
 
   security_groups = concat(local.security_groups, local.cluster_ingress_sg)
@@ -236,11 +237,12 @@ module "cluster" {
   endpoint_public_access    = local.config.eks.endpoint_public_access
   endpoint_private_access   = local.config.eks.endpoint_private_access
   enabled_cluster_log_types = local.config.eks.enabled_log_types
-  public_access_cidrs       = local.config.eks.public_access_cidrs
-  service_ipv4_cidr         = local.config.eks.service_ipv4_cidr
-  create_oidc               = local.config.eks.create_oidc
-  secrets_kms_key_arn       = local.config.kms_key_id
-  node_ingress_rules        = local.node_ingress_rules
+  # Sent only while the public endpoint is on (AWS keeps 0.0.0.0/0 otherwise)
+  public_access_cidrs = local.config.eks.endpoint_public_access ? local.config.eks.public_access_cidrs : ["0.0.0.0/0"]
+  service_ipv4_cidr   = local.config.eks.service_ipv4_cidr
+  create_oidc         = local.config.eks.create_oidc
+  secrets_kms_key_arn = local.config.kms_key_id
+  node_ingress_rules  = local.node_ingress_rules
 
   authentication_mode                         = local.config.eks.authentication_mode
   bootstrap_cluster_creator_admin_permissions = local.config.eks.bootstrap_cluster_creator_admin_permissions
@@ -258,8 +260,8 @@ module "cluster" {
 module "irsa" {
   source = "../../../../modules/iam-roles"
 
-  # No prefix: iam.yaml keys are the FULL role names (template style,
-  # irsa-<org>-<env>-k8s-<workload>).
+  # No prefix: iam.yaml keys are the FULL role names
+  # (<env>-irsa-<workload>-<region>).
   name  = null
   roles = local.irsa_roles
 
@@ -274,7 +276,7 @@ module "irsa" {
 module "node_groups" {
   source = "../../../../modules/eks/node-groups"
 
-  name         = local.name_prefix
+  name         = module.cluster.cluster_name # <cluster>-node, <cluster>-node-ssh
   cluster_name = module.cluster.cluster_name
 
   cluster_security_group_id = module.cluster.cluster_security_group_id
@@ -291,6 +293,14 @@ module "node_groups" {
   ssh_source_cidrs = local.config.node_jump_server_ssh == null ? [] : [local.config.node_jump_server_ssh]
 
   tags = local.tags
+}
+
+# Karpenter discovers SGs by this tag; the EKS-managed cluster SG is the one
+# nodes attach, and aws_ec2_tag is the only way to tag it.
+resource "aws_ec2_tag" "cluster_sg_karpenter_discovery" {
+  resource_id = module.cluster.cluster_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = module.cluster.cluster_name
 }
 
 # ng/*.yaml sanity checks that need the whole file set (cross-file rules

@@ -1,6 +1,6 @@
 # System pool: kube-system / cluster-critical workloads.
 # Self-contained file (template node-group format) - every key deploys
-# from here. Final EKS name: <env>-<org>-<name> (dev-u25c-ng-system-od-us-east-1).
+# from here. Final EKS name: <env>-<name> = this file's name (dev-ng-system-od-us-east-1).
 name: ng-system-od-us-east-1
 
 instance_type_list:
@@ -21,8 +21,8 @@ public_instance: true # template key - informational, placement is subnet_ids be
 
 # From the network stack's outputs (private_subnet_ids / public_subnet_ids)
 subnet_ids:
-  - subnet-REPLACE-ME-public-a
-  - subnet-REPLACE-ME-public-b
+  - subnet-01fdc5bc4739096a9 # public-a
+  - subnet-0914baf217fb5fd25 # public-b
 
 # tags: # extra per-group tags (Org/Env/... come from provider default_tags)
 #   BaseService: system-OnDemand

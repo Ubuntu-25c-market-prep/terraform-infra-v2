@@ -6,7 +6,7 @@
 # network/config.yaml). Omitted from_port/to_port/ip_protocol = all
 # traffic (like default_ipv4 below).
 # Inactive while it ends in .example - copy, drop the suffix, adjust.
-name: cluster-internal
+name: cluster-internal # deployed as <cluster>-cluster-internal
 description: HTTPS to the cluster API from inside the VPC
 attach_to_cluster: true
 
@@ -30,4 +30,4 @@ egress_rules:
   #     - ::/0
 
 tags: # extra per-group tags (Org/Env/... come from default_tags)
-  cluster-name: u25c-uat-cluster
+  cluster-name: uat-eks-us-east-1

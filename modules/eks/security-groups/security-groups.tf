@@ -45,5 +45,13 @@ resource "aws_security_group" "this" {
       condition     = can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id))
       error_message = "vpc_id must be a VPC id (vpc-<hex>) - replace the placeholder with the network stack output."
     }
+    precondition {
+      condition = alltrue([
+        for r in concat(each.value.ingress, each.value.egress) : alltrue([
+          for sg in r.security_groups : can(regex("^sg-[0-9a-f]{8}([0-9a-f]{9})?$", sg))
+        ])
+      ])
+      error_message = "Security group '${each.key}': every referenced security group must be a real id (sg-<hex>) - replace the placeholder with the other stack's output (e.g. the bastion's security_group_id)."
+    }
   }
 }
