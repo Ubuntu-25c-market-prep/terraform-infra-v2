@@ -13,8 +13,6 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags) },
   )
 
-  name_prefix = "${local.config.org}-${local.config.env}"
-
   # Each entry of config.yaml's target_groups array, merged over
   # target_group_defaults (shallow: a health_check stated in an entry
   # replaces the whole default map).
@@ -30,7 +28,7 @@ locals {
 module "alb" {
   source = "../../../../modules/alb"
 
-  name   = "${local.name_prefix}-${local.config.name}"
+  name   = local.config.name # <env>-alb-<region> (config.yaml)
   vpc_id = local.config.vpc_id
 
   # Terraform places the ALB itself (subnet_ids from config.yaml), so no

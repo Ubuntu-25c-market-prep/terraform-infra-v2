@@ -124,7 +124,7 @@ variable "target_groups" {
 
   validation {
     condition     = alltrue([for tg in var.target_groups : length("${var.name}-${tg.name}") <= 32])
-    error_message = "Target group names are limited to 32 characters including the '<alb name>-' prefix."
+    error_message = "Target group names are limited to 32 characters including the '${var.name}-' prefix - ${32 - length(var.name) - 1} remain for the entry's name (it is a label, not the Service name: shorten it)."
   }
 
   validation {

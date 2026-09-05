@@ -1,12 +1,12 @@
 # Terraform OWNS the ALB (listeners, target groups, SGs); the cluster only
 # fills the target groups via TargetGroupBinding. README.md.
 alb:
-  name: alb
-  vpc_id: vpc-REPLACE-ME                    # network stack output
+  name: dev-alb-us-east-1 # <env>-alb-<region>; also the ALB SG name and the target group prefix
+  vpc_id: vpc-0849e0f6efc203ff5     # network stack output
   subnet_ids:                               # network stack output; PUBLIC for internet-facing, PRIVATE for internal
-    - subnet-REPLACE-ME-public-a
-    - subnet-REPLACE-ME-public-b
-  backend_security_group_id: sg-REPLACE-ME  # eks stack output cluster_security_group_id
+    - subnet-01fdc5bc4739096a9 # public-a
+    - subnet-0914baf217fb5fd25 # public-b
+  backend_security_group_id: sg-0be780858bef4f506 # eks stack output cluster_security_group_id
   internal: false                           # default: false (true = no public IPs; subnet_ids must be private)
   ingress_cidrs: [0.0.0.0/0]                # default: [0.0.0.0/0]; narrow for internal/admin ALBs
   ip_address_type: ipv4                     # default: ipv4 | dualstack
