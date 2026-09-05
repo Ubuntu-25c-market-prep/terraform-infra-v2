@@ -56,10 +56,8 @@ locals {
     } if !try(local.subnet_route_table[subnet_name].enable_igw, false)
   ]
 
-  # Deployed route tables carry the config keys as their Name tags. The
-  # module has ONE public route table, so every public subnet must share
-  # one table (one() enforces); private tables list the subnets they
-  # route - several subnets may share one (no NAT = nothing AZ-specific).
+  # Route table Name tags are the config keys; one public table (one()
+  # enforces), private tables list the subnets they route.
   public_route_table_name = one(distinct([
     for subnet in local.public_subnets : local.subnet_route_table_name[subnet.name]
   ]))
@@ -80,9 +78,7 @@ locals {
     length(local.nat_host_subnets) == 1 ? "single" : "per_az"
   )
 
-  # Gateway endpoints (config gateway_endpoints): the vpc module wires them
-  # to every route table or none - any enable_endpoint_route: true turns
-  # them on.
+  # Any enable_endpoint_route: true wires the gateway endpoints to every table.
   gateway_endpoints_enabled = anytrue([
     for rt in values(local.config.route_tables) : try(rt.enable_endpoint_route, false)
   ])
@@ -102,8 +98,9 @@ module "vpc" {
   enable_network_address_usage_metrics = local.config.enable_network_address_usage_metrics
   map_public_ip_on_launch              = local.config.map_public_ip_on_launch
   instance_tenancy                     = local.config.instance_tenancy
-  enable_gateway_endpoints             = local.gateway_endpoints_enabled
-  gateway_endpoints                    = local.config.gateway_endpoints
+  region                               = local.config.region
+  enable_s3_gateway_endpoint           = local.gateway_endpoints_enabled && contains(local.config.gateway_endpoints, "s3")
+  enable_dynamodb_gateway_endpoint     = local.gateway_endpoints_enabled && contains(local.config.gateway_endpoints, "dynamodb")
 
   public_subnets  = local.public_subnets
   private_subnets = local.private_subnets

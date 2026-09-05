@@ -19,23 +19,19 @@ locals {
 }
 
 locals {
-  # Private route tables: as stated (a table may serve several subnets -
-  # with no NAT nothing in a private table is AZ-specific), or one per
-  # private subnet when none are stated.
+  # Stated tables, or one per private subnet.
   private_route_tables = (
     length(var.private_route_tables) > 0
     ? var.private_route_tables
     : { for subnet in var.private_subnets : "${var.name}-${subnet.name}" => [subnet.name] }
   )
 
-  # private subnet name => the route table it is attached to
   private_subnet_route_table = merge([
     for rt_name, subnet_names in local.private_route_tables :
     { for subnet_name in subnet_names : subnet_name => rt_name }
   ]...)
 
-  # The single AZ a private table serves (per_az NAT needs one); null
-  # when its subnets span several AZs or name no private subnet.
+  # AZ of a table's subnets (per_az NAT); null when they span AZs.
   private_route_table_az = {
     for rt_name, subnet_names in local.private_route_tables :
     rt_name => (

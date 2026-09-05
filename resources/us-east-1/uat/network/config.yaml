@@ -8,9 +8,7 @@ enable_dns_support: true                    # default: true
 enable_network_address_usage_metrics: false # default: false
 map_public_ip_on_launch: true               # default: true (not in the template)
 
-# Free gateway endpoints (not in the template): s3 (ECR layers too) and
-# dynamodb, on every route table with enable_endpoint_route: true.
-# Everything else is a billed interface endpoint - add deliberately.
+# Free gateway endpoints (not in the template), on every table with enable_endpoint_route: true
 gateway_endpoints: [s3, dynamodb]
 
 public_subnet_tags: {}  # default: {}; no kubernetes.io/role/* discovery tags until go-live (README)
@@ -32,11 +30,8 @@ subnets:
     availability_zone: us-east-1b
     cidr_suffix: 33.0/24
 
-# Route tables drive the subnets: enable_igw: true = PUBLIC. Keys become
-# the route table Name tags. One private table for both private subnets:
-# with no NAT gateway a private table holds no default route, so per-AZ
-# tables would be identical. (enable_peering_route, vpc_endpoint,
-# custom_route, attach_to_igw: template keys, not wired.)
+# enable_igw: true = PUBLIC. Keys become the Name tags. One private table:
+# without NAT, per-AZ tables would be identical.
 route_tables:
   uat-route-us-east-1-public:
     enable_igw: true
@@ -46,8 +41,7 @@ route_tables:
       - public-b
   uat-route-us-east-1-private:
     enable_igw: false
-    # nat_gateway: public-a # no NAT - uncomment for private egress via one NAT
-    #                       # (per-AZ NATs need one table per AZ again)
+    # nat_gateway: public-a # uncomment for NAT egress (per-AZ NAT = one table per AZ)
     enable_endpoint_route: true
     attach_to_subnets:
       - private-a

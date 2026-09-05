@@ -19,11 +19,8 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Private route tables: keyed by Name, each attached to the subnets it
-# lists. With nat_gateway = none they hold no default route (S3 gateway
-# endpoint only), so one table can serve every private subnet; with NAT
-# each table routes to one NAT (single) or to its own AZ's NAT (per_az -
-# then a table must not span AZs).
+# Private tables route the subnets they list; with per_az NAT a table
+# must not span AZs.
 resource "aws_route_table" "private" {
   for_each = local.private_route_tables
 

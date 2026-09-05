@@ -77,7 +77,7 @@ variable "public_route_table_name" {
 }
 
 variable "private_route_tables" {
-  description = "Private route tables keyed by Name tag, each listing the private subnets (by name) it routes; every private subnet must appear in exactly one table. {} = one table per private subnet, named <name>-<subnet>"
+  description = "Private route tables keyed by Name, each listing the private subnets it routes (every private subnet in exactly one); {} = one table per subnet"
   type        = map(list(string))
   default     = {}
   nullable    = false
@@ -143,21 +143,21 @@ variable "map_public_ip_on_launch" {
   nullable    = false
 }
 
-variable "enable_gateway_endpoints" {
-  description = "Create the gateway endpoints listed in gateway_endpoints and wire them into every route table"
+variable "region" {
+  description = "AWS region, for the gateway endpoint service names"
+  type        = string
+}
+
+variable "enable_s3_gateway_endpoint" {
+  description = "Create the S3 gateway endpoint on every route table"
   type        = bool
   default     = true
   nullable    = false
 }
 
-variable "gateway_endpoints" {
-  description = "Gateway endpoint services to create - s3 and/or dynamodb, the only free endpoint type (everything else is a billed interface endpoint)"
-  type        = list(string)
-  default     = ["s3"]
+variable "enable_dynamodb_gateway_endpoint" {
+  description = "Create the DynamoDB gateway endpoint on every route table"
+  type        = bool
+  default     = false
   nullable    = false
-
-  validation {
-    condition     = alltrue([for e in var.gateway_endpoints : contains(["s3", "dynamodb"], e)])
-    error_message = "gateway_endpoints may only contain s3 and dynamodb - the only services with (free) gateway endpoints."
-  }
 }
