@@ -235,6 +235,10 @@ Note: reviewers on an environment gate *every* job that declares it, plans inclu
 Because commit messages are the source of truth, the workflows only work when they are written correctly:
 
 1. **Every commit that should trigger Terraform needs the convention** — `[<action>][<stack>] <description> - Path: /<stack-folder>`, with the FULL path from the repo root (environment included). Merge however you like: apply finds the convention in the branch commits, so the merge commit message doesn't matter.
+   The inverse is also deliberate: a commit **without** a `Path:` plans and
+   applies nothing — the `target` step fails before Terraform runs, on the
+   branch and on the merge alike. Use that for changes that must not be
+   applied yet (e.g. the `nlb` stack while its design is undecided).
 2. **One stack per commit/PR** — a message can only name one folder, and the apply uses the first valid one it finds. Pushing changes for two stacks to one branch means only one gets applied — silently.
 3. **The Path must match the files you changed** — the workflows check that the Path is a real stack folder, not that it's the folder you edited. A Path naming `dev` with changes in `prod` plans and applies dev (no changes) and leaves prod unapplied, without any error. Read your own Path before pushing.
 4. **Changes to `modules/` name the consuming stack** — `Path: /modules/...` is refused; plan the change through a stack that sources the module (and remember the other environments consume it too).
