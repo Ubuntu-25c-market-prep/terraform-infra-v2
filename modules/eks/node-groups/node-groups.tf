@@ -3,12 +3,12 @@
 resource "aws_security_group" "ssh" {
   count = var.ssh_key_name == null ? 0 : 1
 
-  name        = "${var.name}-node-ssh"
+  name        = "${var.name}-node-ssh-sg"
   description = "SSH to the nodes from the jump server"
   vpc_id      = var.vpc_id
 
   tags = merge(var.tags, {
-    Name = "${var.name}-node-ssh"
+    Name = "${var.name}-node-ssh-sg"
   })
 
   # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
@@ -44,7 +44,7 @@ resource "aws_eks_node_group" "this" {
   for_each = local.node_groups
 
   cluster_name    = var.cluster_name
-  node_group_name = "${var.name}-${each.value.name}"
+  node_group_name = each.value.name
   node_role_arn   = aws_iam_role.node.arn
   subnet_ids      = each.value.subnet_ids != null ? each.value.subnet_ids : var.subnet_ids
 
@@ -87,7 +87,7 @@ resource "aws_eks_node_group" "this" {
   }
 
   tags = merge(var.tags, each.value.tags, {
-    Name = "${var.name}-${each.value.name}"
+    Name = each.value.name
   })
 
   depends_on = [aws_iam_role_policy_attachment.node]

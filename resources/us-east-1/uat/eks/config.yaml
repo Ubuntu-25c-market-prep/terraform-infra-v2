@@ -1,7 +1,7 @@
 # Flat cluster/infra keys up top, cluster behaviour under eks:. Node
 # groups: ng/*.yaml, extra security groups: sg/*.yaml, identity: iam.yaml.
 # Key meanings: README.md "Keys".
-cluster_name: u25c-uat-cluster # immutable - a change recreates the cluster
+cluster_name: uat-eks-us-east-1 # <env>-eks-<region>; immutable - a change recreates the cluster
 cluster_version: "1.34"        # default: null (AWS picks)
 
 # network stack outputs (private subnets: AWS recommendation for the control-plane ENIs)
@@ -10,15 +10,16 @@ cluster_subnet_ids:
   - subnet-REPLACE-ME-private-a
   - subnet-REPLACE-ME-private-b
 
-# SSH to nodes via the bastion only; both null = no SSH. Creation-only.
-ssh_key_name: u25c-uat-bastion             # bastion stack output key_pair_name
+# SSH to nodes via the bastion only (creation-only: node groups made without
+# it never gain SSH). The key pair name is the bastion stack's `name`.
+ssh_key_name: uat-bastion-us-east-1            # bastion stack output key_pair_name
 node_jump_server_ssh: 10.2.0.REPLACE-ME/32 # bastion private IP /32 (bastion output private_ips)
 
 # kubelet pod ceiling, fixed at boot; default: null = ENI-derived (17 on
 # t3.medium). 110 needs ENABLE_PREFIX_DELEGATION on the CNI (gitops-flux).
 node_max_pods: 110
 
-kms_key_id: arn:aws:kms:us-east-1:REPLACE-ME:key/REPLACE-ME # default: null; KMS key ARN for Secrets envelope encryption
+kms_key_id: null # AWS-managed encryption (EKS default); a KMS key ARN here = customer-managed envelope key
 
 # tags: # extra stack tags (Org/Env/Component/Repo come from default_tags)
 #   Project:
@@ -26,24 +27,35 @@ kms_key_id: arn:aws:kms:us-east-1:REPLACE-ME:key/REPLACE-ME # default: null; KMS
 eks:
   create_oidc: true                  # IRSA needs it (iam-roles stack, iam.yaml service_accounts)
   service_ipv4_cidr: 172.20.0.0/16   # default: null (AWS picks); must not overlap the VPC
-  public_access_cidrs:               # default: [0.0.0.0/0]; narrow in CI, not by committing office IPs
+  public_access_cidrs:               # default: [0.0.0.0/0]; only applies while endpoint_public_access is true
     - 10.2.0.0/16
-  endpoint_public_access: true       # default: true
-  endpoint_private_access: true      # default: false; in-VPC callers need no internet path
+  endpoint_public_access: false      # default: true; the API is reached from inside the VPC only (bastion)
+  endpoint_private_access: true      # default: false; kubelets, the bastion and in-VPC tooling use the private endpoint
   enabled_log_types: [api, audit]                 # default: [] (api, audit, authenticator, controllerManager, scheduler)
   authentication_mode: API           # default: API (access entries; aws-auth ConfigMap is deprecated)
   bootstrap_cluster_creator_admin_permissions: true # default: true (the CI apply role keeps admin)
 
-  # Extra ingress to the CONTROL PLANE ENIs (becomes one extra SG); {} = none
-  cluster_ingress_rules: {}
-  # cluster_ingress_rules:
-  #   allow_443_from_internal:
+  # Extra ingress to the CONTROL PLANE ENIs (becomes one extra SG,
+  # <cluster>-cluster-ingress); {} = none. With the public endpoint off,
+  # the bastion is the only way to the Kubernetes API.
+  cluster_ingress_rules:
+    allow_443_from_bastion:
+      description: Kubernetes API from the bastion
+      referenced_security_group_ids: [sg-REPLACE-ME] # bastion stack output security_group_id
+      from_port: 443
+      to_port: 443
+      ip_protocol: tcp
+  #   allow_443_from_internal: # whole VPC instead of / besides the bastion
   #     cidrs: [10.2.0.0/16] # this environment's VPC CIDR
   #     from_port: 443
   #     to_port: 443
   #     ip_protocol: tcp
 
-  # Extra ingress on the EKS-managed cluster SG (every node); {} = none
+  # Extra ingress on the EKS-managed cluster SG (every node); {} = none.
+  # Nodes sit in public subnets, so inbound is only what is listed: the
+  # cluster SG itself (EKS), the bastion on :22 (node_jump_server_ssh) and
+  # the ALB SG on registered target ports (alb stack). Keep {} unless a
+  # peered range or appliance must reach the nodes directly.
   shared_node_ingress_rules: {}
   # shared_node_ingress_rules:
   #   allow_all_internal:

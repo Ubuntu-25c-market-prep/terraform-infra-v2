@@ -51,4 +51,11 @@ resource "aws_vpc_security_group_ingress_rule" "node_sg" {
   tags = merge(var.tags, {
     Name = "${var.name}-${each.value.rule}"
   })
+
+  lifecycle {
+    precondition {
+      condition     = can(regex("^sg-[0-9a-f]{8}([0-9a-f]{9})?$", each.value.source))
+      error_message = "Node ingress rule '${each.value.rule}': '${each.value.source}' is not a security group id (sg-<hex>) - replace the placeholder with the real id."
+    }
+  }
 }

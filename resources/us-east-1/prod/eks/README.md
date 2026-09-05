@@ -18,11 +18,40 @@ stack reads no remote state; `kms_key_id` is a key id, ARN or alias.
 `key_pair_name`) plus `node_jump_server_ssh` (the bastion's private IP
 as a /32) enable SSH to the nodes from the bastion only; both `null` =
 no remote access. IRSA roles are named exactly as their `iam.yaml` key
-(`irsa-<org>-<env>-k8s-<workload>`) and get the cluster's OIDC provider
-wired directly. Non-cluster IAM stays in the separate `iam-roles/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
+(`<env>-irsa-<workload>-<region>` - the region is in the name because the
+role is bound to this cluster's OIDC provider) and get the cluster's OIDC
+provider wired directly. Non-cluster IAM stays in the separate `iam-roles/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
 managed here — Flux CD owns them after the cluster is up. EKS still
 installs its default self-managed versions at creation, so nodes join
 before Flux runs.
+
+## Naming
+
+The cluster is `<env>-eks-<region>` (`prod-eks-us-east-1`, README "Naming")
+and prefixes what it owns: `prod-eks-us-east-1-role` (cluster role),
+`prod-eks-us-east-1-node-role`, `prod-eks-us-east-1-node-ssh-sg`, and every
+extra security group (`prod-eks-us-east-1-cluster-ingress`). Node groups are
+`<env>-<ng file name>` (`prod-ng-system-od-us-east-1`); IRSA roles
+`<env>-irsa-<workload>-<region>`. Changing `cluster_name` recreates the
+cluster.
+
+## Access model
+
+- **Kubernetes API**: the public endpoint is off; the private endpoint is
+  reached from inside the VPC only. `eks.cluster_ingress_rules` opens :443
+  on the control-plane ENIs to the bastion's security group, so kubectl
+  goes through the bastion (SSH tunnel or SSM port-forward). Terraform in
+  CI never talks to the Kubernetes API (Flux owns addons), so CI needs no
+  path in. `public_access_cidrs` stays at the VPC CIDR so that flipping
+  `endpoint_public_access` back on does not expose the endpoint.
+- **Nodes** sit in public subnets with public IPs (no NAT), so inbound is
+  only what security groups allow: the EKS cluster SG itself, the bastion's
+  private IP on :22 (`node_jump_server_ssh`, a /32 on the SSH SG), and the
+  ALB's security group on registered target ports (added by the alb
+  stack). `shared_node_ingress_rules` stays `{}` unless something else
+  must reach the nodes directly.
+- **Secrets encryption** uses the EKS default (AWS-managed);
+  `kms_key_id: null`. A customer-managed key is a KMS ARN there.
 
 ## Extra security groups
 
@@ -33,6 +62,7 @@ sources are `cidrs` and/or `referenced_security_group_ids`, and omitting
 `from_port`/`to_port`/`ip_protocol` means all traffic (CIDRs are
 written literally - each environment has its own files), and
 `attach_to_cluster: true` adds the group to the control plane ENIs.
+Groups are named `<cluster>-<name>`.
 Per-group `tags` are merged over the stack tags. `cidrs_ipv6` is not
 wired (the VPC is IPv4-only). `.example` files are inactive documentation — copy, drop
 the suffix, adjust. With no active files, no extra groups are created
@@ -88,10 +118,10 @@ Every group launches through a module-made launch template: IMDSv2
 (hop limit 1), gp3 root disk, the cluster SG, and the `node_max_pods`
 user data. A template change rolls the group's nodes.
 
-`name:` in each file is the filename minus the env prefix; the module
-prepends `<env>-<org>-` (env first, matching the gitops-flux NodePool
-naming), so `ng/prod-ng-system-od-us-east-1.yaml` with
-`name: ng-system-od-us-east-1` becomes `prod-u25c-ng-system-od-us-east-1`.
+`name:` in each file is the filename minus the env prefix; the stack
+prepends `<env>-`, so `ng/prod-ng-system-od-us-east-1.yaml` with
+`name: ng-system-od-us-east-1` becomes `prod-ng-system-od-us-east-1` - the
+EKS node group is named exactly like its file.
 
 | Group | Profile | Purpose |
 | --- | --- | --- |
@@ -124,19 +154,19 @@ changes needed — the stack discovers files via `fileset()`.
 | `cluster_name` | immutable - changing it destroys and recreates the cluster |
 | `cluster_version` | Kubernetes version; `null` = AWS picks the current one |
 | `vpc_id`, `cluster_subnet_ids` | network stack outputs; the control-plane ENIs live in these subnets (private - they carry no public IP and need no internet route); both AZs must be covered |
-| `ssh_key_name` | EC2 key pair for SSH to the nodes - the bastion stack's `key_pair_name`; `null` = no SSH |
+| `ssh_key_name` | EC2 key pair for SSH to the nodes - the bastion stack's `key_pair_name`, which is that stack's `name` (`<env>-bastion-<region>`); `null` = no SSH |
 | `node_jump_server_ssh` | the bastion's private IP as a `/32` (bastion output `private_ips`) - the only address allowed on :22. Required with `ssh_key_name`. The /32 is an SG rule, changeable anytime; changing `ssh_key_name` makes a new launch-template version and **rolls the nodes** |
 | `node_max_pods` | kubelet pod ceiling on every node group (set via launch-template user data, fixed at boot). ENI default is 17 on small nodes; 110 = EKS recommendation. Requires CNI prefix delegation (Flux side) first; `null` = ENI default |
-| `kms_key_id` | KMS key ARN for envelope encryption of Secrets; `null` = none |
+| `kms_key_id` | KMS key ARN for a customer-managed Secrets envelope key; `null` = the EKS default (AWS-managed) |
 | `tags` | extra tags on everything in this stack (Org/Env/Component/Repo come from `default_tags`) |
 | `eks.create_oidc` | create the IAM OIDC provider - required for IRSA |
 | `eks.service_ipv4_cidr` | Kubernetes service CIDR; must not overlap the VPC |
-| `eks.public_access_cidrs` | who may reach the public API endpoint; uat/prod restrict to the VPC CIDR. Narrow further at plan time in CI rather than committing office IPs |
-| `eks.endpoint_public_access` / `endpoint_private_access` | API endpoint exposure; private = in-VPC callers (kubelets, bastion) reach the API without an internet path. Free, changeable in place |
+| `eks.public_access_cidrs` | who may reach the public API endpoint while `endpoint_public_access` is `true`; kept at the VPC CIDR so re-enabling the public endpoint exposes nothing by accident |
+| `eks.endpoint_public_access` / `endpoint_private_access` | API endpoint exposure: public off, private on - kubelets, the bastion and in-VPC tooling reach the API without an internet path ("Access model"). Free, changeable in place |
 | `eks.enabled_log_types` | control-plane logs to CloudWatch |
 | `eks.authentication_mode` | `API` = access entries only (the aws-auth ConfigMap is deprecated) |
 | `eks.bootstrap_cluster_creator_admin_permissions` | the identity that creates the cluster (CI apply role) keeps admin |
-| `eks.cluster_ingress_rules` | extra ingress to the control-plane ENIs; becomes one extra security group. Rule format as in `sg/` |
+| `eks.cluster_ingress_rules` | extra ingress to the control-plane ENIs; becomes one extra security group (`<cluster>-cluster-ingress`). Holds the :443-from-bastion rule (bastion output `security_group_id`). Rule format as in `sg/` |
 | `eks.shared_node_ingress_rules` | extra ingress on the EKS-managed cluster SG (the SG every node uses): peered ranges, appliances, another cluster. `ip_protocol: -1` = all traffic, omit the ports |
 | `eks.additional_node_pools_iam_roles` | role names of node pools created elsewhere (Karpenter); each becomes an `EC2_LINUX` access entry. Never list this stack's own node groups |
 
@@ -145,7 +175,7 @@ changes needed — the stack discovers files via `fileset()`.
 | Section | Keyed by | Notes |
 |---|---|---|
 | `access_entries` | principal: a full ARN (used verbatim) or a short name resolved via `role_name` (exact) / `role_name_pattern` (regex, for SSO roles whose names carry a random suffix) | `access_entry_type` `STANDARD` or `EC2_LINUX`; grant with `policy_arn` (an EKS access policy, `scope`/`namespaces` optional) and/or `kubernetes_groups` (cluster RBAC). EKS auto-creates entries for this stack's node groups - never list those; node pools from other stacks go in `eks.additional_node_pools_iam_roles`. The pattern lookup needs `iam:ListRoles` - plan via CI or as PlatformAdmin |
-| `service_accounts` | the **full** IRSA role name `irsa-<org>-<env>-k8s-<workload>`, used verbatim | `namespace_service_account: <ns>/<sa>` - the role is assumable only by that service account; `attached_policies` (ARNs: AWS-managed verbatim, customer-managed from the iam-roles stack `policy_arns` output); `description` optional. Put the role ARN (output `irsa_role_arns`) in the SA's `eks.amazonaws.com/role-arn` annotation. Merge the role before the Flux release that uses it |
+| `service_accounts` | the **full** IRSA role name `<env>-irsa-<workload>-<region>`, used verbatim | `namespace_service_account: <ns>/<sa>` - the role is assumable only by that service account; `attached_policies` (ARNs: AWS-managed verbatim, customer-managed from the iam-roles stack `policy_arns` output); `description` optional. Put the role ARN (output `irsa_role_arns`) in the SA's `eks.amazonaws.com/role-arn` annotation. Merge the role before the Flux release that uses it |
 | `iam_role_tags` | - | extra tags on every IRSA role |
 
 Karpenter is not just an IRSA role (discovery tags, node role/instance

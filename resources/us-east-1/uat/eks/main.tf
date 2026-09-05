@@ -17,9 +17,9 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags, try(local.stack_config.tags, {})) },
   )
 
-  # Env first, matching the gitops-flux NodePool naming (cluster and
-  # IRSA names come verbatim from config.yaml/iam.yaml, org-first).
-  name_prefix = "${local.config.env}-${local.config.org}"
+  # Naming (README "Naming"): the cluster name (<env>-eks-<region>) prefixes
+  # everything the cluster owns - node role, SSH SG, extra SGs; node groups
+  # are <env>-<ng file name>; IRSA roles come verbatim from iam.yaml.
 
   # Node groups and extra security groups: one SELF-CONTAINED file each
   # under ng/ resp. sg/, in the template format (no defaults layer). Both are
@@ -106,10 +106,11 @@ locals {
   # ng/*.yaml (template node-group format) -> node-groups module shape.
   # Strict lookups on purpose (same rule as config.yaml): name, sizing and
   # the use_* switches and subnet_ids must be stated in every file; only
-  # k8s_labels, k8s_taints and tags may be omitted.
+  # k8s_labels, k8s_taints and tags may be omitted. The EKS name is
+  # <env>-<name>, i.e. the file name (dev-ng-system-od-us-east-1).
   node_groups = [
     for g in local.node_group_files : {
-      name           = g.name
+      name           = "${local.config.env}-${g.name}"
       instance_types = g.instance_type_list
       capacity_type  = g.use_on_demand_instance ? "ON_DEMAND" : "SPOT"
       # Architecture follows the instance types: a Graviton family has a
@@ -212,7 +213,7 @@ locals {
 module "security_groups" {
   source = "../../../../modules/eks/security-groups"
 
-  name   = local.name_prefix
+  name   = local.config.cluster_name # SGs: <cluster>-<sg name>
   vpc_id = local.config.vpc_id
 
   security_groups = concat(local.security_groups, local.cluster_ingress_sg)
@@ -258,8 +259,8 @@ module "cluster" {
 module "irsa" {
   source = "../../../../modules/iam-roles"
 
-  # No prefix: iam.yaml keys are the FULL role names (template style,
-  # irsa-<org>-<env>-k8s-<workload>).
+  # No prefix: iam.yaml keys are the FULL role names
+  # (<env>-irsa-<workload>-<region>).
   name  = null
   roles = local.irsa_roles
 
@@ -274,7 +275,7 @@ module "irsa" {
 module "node_groups" {
   source = "../../../../modules/eks/node-groups"
 
-  name         = local.name_prefix
+  name         = module.cluster.cluster_name # <cluster>-node-role, <cluster>-node-ssh-sg
   cluster_name = module.cluster.cluster_name
 
   cluster_security_group_id = module.cluster.cluster_security_group_id
