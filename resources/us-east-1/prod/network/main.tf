@@ -56,32 +56,18 @@ locals {
     } if !try(local.subnet_route_table[subnet_name].enable_igw, false)
   ]
 
-  # Deployed route tables carry the config keys as their Name tags. The
-  # module has ONE public route table, so every public subnet must share
-  # one table (one() enforces); private tables are per subnet.
+  # Route table Name tags are the config keys; one public table (one()
+  # enforces), private tables list the subnets they route.
   public_route_table_name = one(distinct([
     for subnet in local.public_subnets : local.subnet_route_table_name[subnet.name]
   ]))
-  private_route_table_names = {
-    for subnet in local.private_subnets :
-    subnet.name => local.subnet_route_table_name[subnet.name]
+  private_route_tables = {
+    for rt_name, rt in local.config.route_tables :
+    rt_name => rt.attach_to_subnets if !try(rt.enable_igw, false)
   }
 
-  # NAT mode for the vpc module, derived from the tables' nat_gateway
-  # keys: none stated = "none" (prod today), one distinct host subnet =
-  # "single", several = "per_az".
-  nat_host_subnets = distinct([
-    for rt in values(local.config.route_tables) : rt.nat_gateway
-    if try(rt.nat_gateway, null) != null
-  ])
-  nat_gateway_mode = (
-    length(local.nat_host_subnets) == 0 ? "none" :
-    length(local.nat_host_subnets) == 1 ? "single" : "per_az"
-  )
-
-  # S3 gateway endpoint: the vpc module wires it to every route table or
-  # none - any enable_endpoint_route: true turns it on.
-  s3_gateway_endpoint = anytrue([
+  # Any enable_endpoint_route: true wires the gateway endpoints to every table.
+  gateway_endpoints_enabled = anytrue([
     for rt in values(local.config.route_tables) : try(rt.enable_endpoint_route, false)
   ])
 }
@@ -100,17 +86,17 @@ module "vpc" {
   enable_network_address_usage_metrics = local.config.enable_network_address_usage_metrics
   map_public_ip_on_launch              = local.config.map_public_ip_on_launch
   instance_tenancy                     = local.config.instance_tenancy
-  enable_s3_gateway_endpoint           = local.s3_gateway_endpoint
+  region                               = local.config.region
+  enable_s3_gateway_endpoint           = local.gateway_endpoints_enabled && contains(local.config.gateway_endpoints, "s3")
+  enable_dynamodb_gateway_endpoint     = local.gateway_endpoints_enabled && contains(local.config.gateway_endpoints, "dynamodb")
 
   public_subnets  = local.public_subnets
   private_subnets = local.private_subnets
 
   # The deployed tables are literally named like the config keys
   # (prod-route-us-east-1-public, ...), so config and AWS console match.
-  public_route_table_name   = local.public_route_table_name
-  private_route_table_names = local.private_route_table_names
-
-  nat_gateway = local.nat_gateway_mode
+  public_route_table_name = local.public_route_table_name
+  private_route_tables    = local.private_route_tables
 
   public_subnet_tags  = local.config.public_subnet_tags
   private_subnet_tags = local.config.private_subnet_tags

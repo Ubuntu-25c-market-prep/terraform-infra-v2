@@ -19,13 +19,8 @@ output "private_subnet_ids" {
 }
 
 output "private_route_table_ids" {
-  description = "Map of private subnet name to its route table ID"
+  description = "Map of private route table Name to ID"
   value       = { for name, rt in aws_route_table.private : name => rt.id }
-}
-
-output "nat_gateway_public_ips" {
-  description = "Public IPs of the NAT gateways (empty when nat_gateway = none) - the source IPs of all private-subnet egress"
-  value       = { for key, eip in aws_eip.nat : key => eip.public_ip }
 }
 
 output "internet_gateway_id" {
@@ -41,4 +36,9 @@ output "public_route_table_id" {
 output "s3_gateway_endpoint_id" {
   description = "ID of the S3 gateway endpoint (null when disabled)"
   value       = one(aws_vpc_endpoint.s3[*].id)
+}
+
+output "dynamodb_gateway_endpoint_id" {
+  description = "ID of the DynamoDB gateway endpoint (null when disabled)"
+  value       = one(aws_vpc_endpoint.dynamodb[*].id)
 }

@@ -38,7 +38,7 @@ variable "public_subnets" {
 }
 
 variable "private_subnets" {
-  description = "Private subnets to create in the VPC (no direct internet route; egress only via NAT when enabled)"
+  description = "Private subnets to create in the VPC (no internet route; gateway endpoints only)"
   type = list(object({
     name              = string
     cidr_block        = string
@@ -58,27 +58,15 @@ variable "private_subnets" {
   }
 }
 
-variable "nat_gateway" {
-  description = "NAT for the private subnets: none (isolated - S3 still reachable via the gateway endpoint), single (one NAT, cheapest), per_az (one NAT per private-subnet AZ, survives an AZ failure)"
-  type        = string
-  default     = "none"
-  nullable    = false
-
-  validation {
-    condition     = contains(["none", "single", "per_az"], var.nat_gateway)
-    error_message = "nat_gateway must be none, single or per_az."
-  }
-}
-
 variable "public_route_table_name" {
   description = "Explicit Name tag for the public route table; null = <name>-public"
   type        = string
   default     = null
 }
 
-variable "private_route_table_names" {
-  description = "Explicit Name tag per private subnet's route table, keyed by SUBNET name; missing keys fall back to <name>-<subnet>"
-  type        = map(string)
+variable "private_route_tables" {
+  description = "Private route tables keyed by Name, each listing the private subnets it routes (every private subnet in exactly one); {} = one table per subnet"
+  type        = map(list(string))
   default     = {}
   nullable    = false
 }
@@ -143,9 +131,21 @@ variable "map_public_ip_on_launch" {
   nullable    = false
 }
 
+variable "region" {
+  description = "AWS region, for the gateway endpoint service names"
+  type        = string
+}
+
 variable "enable_s3_gateway_endpoint" {
-  description = "Create an S3 gateway endpoint on the public route table"
+  description = "Create the S3 gateway endpoint on every route table"
   type        = bool
   default     = true
+  nullable    = false
+}
+
+variable "enable_dynamodb_gateway_endpoint" {
+  description = "Create the DynamoDB gateway endpoint on every route table"
+  type        = bool
+  default     = false
   nullable    = false
 }

@@ -10,11 +10,11 @@ environment, all values in YAML, CI driven by commit messages.
 ├── .github/workflows/     # plan on branch push, apply on merge - the stack
 │                          # folder comes from the commit message (see below)
 ├── modules/               # Reusable child modules - never run directly
-│   ├── vpc/               # VPC, public+private subnets, S3 endpoint (NAT optional, off)
+│   ├── vpc/               # VPC, public+private subnets, S3+DynamoDB gateway endpoints, no NAT
 │   ├── ecr/               # Repositories + lifecycle policies
 │   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
-│   ├── ec2/               # SSM-only instances (no SSH) - for the jump host
+│   ├── bastion/           # jump host reached over SSM (no inbound port)
 │   ├── alb/               # Terraform-owned ALB + ip target groups; pods
 │   │                      # join via TargetGroupBinding (never Ingress)
 │   ├── nlb/               # Terraform-owned NLB (L4: TCP/UDP/TLS) + ip target
@@ -56,6 +56,18 @@ Push to a feature branch → plan runs in that folder. Merge to `main` →
 apply runs there. One stack per PR. Full walkthrough:
 [`.github/workflows/README.md`](.github/workflows/README.md).
 
+## Naming
+
+Resources are named `<env>-<component>-<region>` - `dev-vpc-us-east-1`,
+`dev-eks-us-east-1`, `dev-bastion-us-east-1`, `dev-alb-us-east-1` - with
+the parts a component owns appended (`dev-eks-us-east-1-node-role`,
+`dev-vpc-us-east-1-public-a`). The org is not in the name: every
+resource carries it as the `Org` default tag. Exceptions: IRSA roles
+(`<env>-irsa-<workload>-<region>`), node groups (`<env>-ng-<pool>-<region>`,
+the `ng/` file name), route tables (`<env>-route-<region>-<public|private>`),
+and S3 buckets / ECR repositories, which keep `<org>-<env>-<name>` for
+global uniqueness.
+
 ## Configuration model
 
 Each stack merges four YAML layers into one config, most specific last:
@@ -87,20 +99,22 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 
 | | dev | uat | prod |
 |---|---|---|---|
-| VPC | 10.0.0.0/16 | 10.2.0.0/16 | 10.1.0.0/16 |
+| VPC | 10.1.0.0/16 | 10.2.0.0/16 | 10.3.0.0/16 |
 | NAT | none | none | none |
-| Cluster API | public | private + VPC-only public | private + VPC-only public |
+| Cluster API | private, via bastion | private, via bastion | private, via bastion |
 | Nodes (default) | t3.medium 1/2/3 | t3.large 1/2/4 | m5.large 2/3/5 |
 | ECR tags | mutable | immutable | immutable |
 
 Nodes run in the public subnets in all environments, alongside the
 bastion and internet-facing load balancers: no NAT gateway anywhere, so
 `map_public_ip_on_launch` gives nodes public IPs and internet egress via
-the IGW, with security groups as the only inbound barrier. The private
+the IGW, with security groups as the only inbound barrier - the cluster
+SG itself, the bastion on :22, and the ALB SG on target ports. The
+Kubernetes API has no public endpoint; the bastion's security group is
+allowed to :443 on the control plane (`eks/README.md` "Access model"). The private
 subnets hold only the control-plane ENIs and have no internet egress
-(S3 via the gateway endpoint only). The `nat_gateway:` lines in each
-`network/config.yaml` are commented out and can be restored per env if
-private egress is ever needed.
+(S3 and DynamoDB via the free gateway endpoints only). NAT is not implemented in the vpc module;
+if private egress is ever needed it is a deliberate module change.
 
 ## State
 
@@ -163,9 +177,9 @@ and again only if the resource is recreated:
 4b. IRSA policies: `iam-roles` (`policies` array) → output `policy_arns` →
    paste into `eks/iam.yaml` `attached_policies`, then apply `eks`
 5. `bastion`, `alb`, `nlb`, `iam-roles` in any order; `ecr`/`s3` anytime
-6. SSH to nodes: `bastion` → output `private_ips` → paste as a /32 into
-   `eks/config.yaml` `node_jump_server_ssh` (`ssh_key_name` is already the
-   bastion key pair) **before** the node groups are first created - remote
-   access is creation-only, so `bastion` applies before `eks`
+6. `bastion` → outputs `private_ips` (as a /32 into `eks/config.yaml`
+   `node_jump_server_ssh`) and `security_group_id` (into
+   `eks.cluster_ingress_rules`); `ssh_key_name` is already the bastion key
+   pair name. Node SSH is creation-only, so `bastion` applies before `eks`
 
 `REPLACE-ME` placeholders fail the plan on purpose until real ids are in.

@@ -1,4 +1,5 @@
-# Naming: <org>-<env>-<component>[-suffix], e.g. u25c-dev-vpc
+# Naming: <env>-<component>-<region>, e.g. dev-vpc-us-east-1 (README "Naming");
+# the org appears as the Org default tag, not in resource names.
 org: u25c
 
 # The v2 repo name (becomes the Repo default tag on every resource).

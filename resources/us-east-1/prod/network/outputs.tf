@@ -27,8 +27,3 @@ output "private_subnet_ids" {
   description = "IDs of the private subnets"
   value       = module.vpc.private_subnet_ids
 }
-
-output "nat_gateway_public_ips" {
-  description = "Public IPs of the NAT gateways - the source IPs of all private-subnet egress"
-  value       = module.vpc.nat_gateway_public_ips
-}

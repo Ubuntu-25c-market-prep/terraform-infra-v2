@@ -1,5 +1,5 @@
 # Two public + two private subnets, no NAT (see README.md "Design").
-name: u25c-uat-vpc
+name: uat-vpc-us-east-1 # <env>-vpc-<region>; prefixes every network resource name
 cidr_prefix: "10.2" # quoted - a bare number is YAML for a float
 cidr_suffix: 0.0/16
 instance_tenancy: default                   # default: default
@@ -7,6 +7,9 @@ enable_dns_hostnames: true                  # default: true
 enable_dns_support: true                    # default: true
 enable_network_address_usage_metrics: false # default: false
 map_public_ip_on_launch: true               # default: true (not in the template)
+
+# Free gateway endpoints (not in the template), on every table with enable_endpoint_route: true
+gateway_endpoints: [s3, dynamodb]
 
 public_subnet_tags: {}  # default: {}; no kubernetes.io/role/* discovery tags until go-live (README)
 private_subnet_tags: {} # default: {}
@@ -27,9 +30,8 @@ subnets:
     availability_zone: us-east-1b
     cidr_suffix: 33.0/24
 
-# Route tables drive the subnets: enable_igw: true = PUBLIC. Keys become
-# the route table Name tags. (enable_peering_route, vpc_endpoint,
-# custom_route, attach_to_igw: template keys, not wired.)
+# enable_igw: true = PUBLIC. Keys become the Name tags. One private table:
+# without NAT, per-AZ tables would be identical.
 route_tables:
   uat-route-us-east-1-public:
     enable_igw: true
@@ -37,17 +39,12 @@ route_tables:
     attach_to_subnets:
       - public-a
       - public-b
-  uat-route-us-east-1a-private:
+  uat-route-us-east-1-private:
     enable_igw: false
-    # nat_gateway: public-a # no NAT - uncomment (and below) to restore private egress
+    # nat_gateway: public-a # template key, not wired (no NAT in the vpc module)
     enable_endpoint_route: true
     attach_to_subnets:
       - private-a
-  uat-route-us-east-1b-private:
-    enable_igw: false
-    # nat_gateway: public-b
-    enable_endpoint_route: true
-    attach_to_subnets:
       - private-b
 
 # Template sections not wired in this design (placeholders):

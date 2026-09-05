@@ -19,34 +19,37 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# One route table per private subnet: with per_az NAT each routes to its
-# own AZ's NAT; with single NAT they all point at the same one; with
-# nat_gateway = none they hold no default route (S3 gateway endpoint only).
 resource "aws_route_table" "private" {
-  for_each = local.private_subnets
+  for_each = local.private_route_tables
 
   vpc_id = aws_vpc.this.id
 
   tags = merge(var.tags, {
-    Name = lookup(var.private_route_table_names, each.value.name, "${var.name}-${each.value.name}")
+    Name = each.key
   })
-}
 
-resource "aws_route" "private_nat" {
-  for_each = var.nat_gateway == "none" ? {} : local.private_subnets
-
-  route_table_id         = aws_route_table.private[each.key].id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id = (
-    var.nat_gateway == "single"
-    ? aws_nat_gateway.this["single"].id
-    : aws_nat_gateway.this[each.value.availability_zone].id
-  )
+  lifecycle {
+    precondition {
+      condition     = alltrue([for s in each.value : contains(keys(local.private_subnets), s)])
+      error_message = "Route table '${each.key}' lists a subnet that is not a private subnet of this VPC (${join(", ", each.value)})."
+    }
+    precondition {
+      condition     = length(local.private_route_table_subnets) == length(distinct(local.private_route_table_subnets))
+      error_message = "A private subnet is listed in more than one private route table - each subnet attaches to exactly one."
+    }
+  }
 }
 
 resource "aws_route_table_association" "private" {
   for_each = aws_subnet.private
 
   subnet_id      = each.value.id
-  route_table_id = aws_route_table.private[each.key].id
+  route_table_id = try(aws_route_table.private[local.private_subnet_route_table[each.key]].id, null)
+
+  lifecycle {
+    precondition {
+      condition     = contains(keys(local.private_subnet_route_table), each.key)
+      error_message = "Private subnet '${each.key}' is listed in no private route table - every private subnet needs exactly one."
+    }
+  }
 }
