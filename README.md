@@ -14,7 +14,7 @@ environment, all values in YAML, CI driven by commit messages.
 │   ├── ecr/               # Repositories + lifecycle policies
 │   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
-│   ├── ec2/               # SSM-only instances (no SSH) - for the jump host
+│   ├── bastion/           # jump host reached over SSM (no inbound port)
 │   ├── alb/               # Terraform-owned ALB + ip target groups; pods
 │   │                      # join via TargetGroupBinding (never Ingress)
 │   ├── nlb/               # Terraform-owned NLB (L4: TCP/UDP/TLS) + ip target
@@ -177,9 +177,9 @@ and again only if the resource is recreated:
 4b. IRSA policies: `iam-roles` (`policies` array) → output `policy_arns` →
    paste into `eks/iam.yaml` `attached_policies`, then apply `eks`
 5. `bastion`, `alb`, `nlb`, `iam-roles` in any order; `ecr`/`s3` anytime
-6. SSH to nodes: `bastion` → output `private_ips` → paste as a /32 into
-   `eks/config.yaml` `node_jump_server_ssh` (`ssh_key_name` is already the
-   bastion key pair) **before** the node groups are first created - remote
-   access is creation-only, so `bastion` applies before `eks`
+6. `bastion` → outputs `private_ips` (as a /32 into `eks/config.yaml`
+   `node_jump_server_ssh`) and `security_group_id` (into
+   `eks.cluster_ingress_rules`); `ssh_key_name` is already the bastion key
+   pair name. Node SSH is creation-only, so `bastion` applies before `eks`
 
 `REPLACE-ME` placeholders fail the plan on purpose until real ids are in.
