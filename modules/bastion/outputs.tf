@@ -22,3 +22,8 @@ output "key_pair_name" {
   description = "Name of the module-created key pair (null when using an existing key_name or no SSH)"
   value       = one(aws_key_pair.this[*].key_name)
 }
+
+output "iam_role_arn" {
+  description = "ARN of the bastion instance role (null when enable_ssm = false)"
+  value       = one(aws_iam_role.this[*].arn)
+}

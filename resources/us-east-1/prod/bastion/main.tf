@@ -28,6 +28,7 @@ module "bastion" {
   # Strict lookups on purpose: every value must be stated in config.yaml,
   # so a missing or misspelled key fails the plan instead of silently
   # falling back to a module default.
+  enable_ssm            = local.config.enable_ssm
   create_security_group = local.config.create_security_group
   key_name              = local.config.key_name
   ssh_public_key        = local.config.ssh_public_key

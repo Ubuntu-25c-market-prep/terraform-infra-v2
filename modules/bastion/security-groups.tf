@@ -1,7 +1,5 @@
-# SSH in from the stated CIDRs only, and OUT only what egress_rules
-# allows - a bastion forwards SSH and updates itself; it is not a
-# general egress path. Without this group, instances with no
-# security_group_ids would silently land in the VPC's default group.
+# Inbound only from ssh_ingress_cidrs (none with SSM); egress only what
+# egress_rules allows.
 resource "aws_security_group" "this" {
   count = var.create_security_group ? 1 : 0
 
@@ -10,7 +8,6 @@ resource "aws_security_group" "this" {
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {
-    # No CIDRs stated = no SSH rule at all, the group is egress-only.
     for_each = length(var.ssh_ingress_cidrs) > 0 ? [true] : []
 
     content {

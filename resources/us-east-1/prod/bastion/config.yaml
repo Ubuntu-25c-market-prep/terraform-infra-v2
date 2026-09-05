@@ -1,21 +1,22 @@
-# One small instance in a PUBLIC subnet: SSH entry point into the VPC
-# (no NAT, so a private instance would have no route out). README.md.
+# One small instance in a PUBLIC subnet (no NAT), reached over Session
+# Manager - no inbound port. README.md.
 bastion:
   name: prod-bastion-us-east-1   # <env>-bastion-<region>: security group and key pair name
   vpc_id: vpc-REPLACE-ME         # network stack output
+  enable_ssm: true              # default: true; instance profile with AmazonSSMManagedInstanceCore
   create_security_group: true   # default: true
   ssh_public_key: CHANGE_ME     # default: null; the team's PUBLIC key - Terraform creates the key pair
   key_name: null                # default: null; an existing key pair instead (then ssh_public_key: null)
-  ssh_ingress_cidrs: [0.0.0.0/0] # default: []; narrow at plan time in CI
+  ssh_ingress_cidrs: []         # default: []; no inbound rule - SSH goes over SSM
 
-  # Egress is deliberately narrow; DNS/NTP need no rules (link-local).
+  # Egress: SSH to nodes, HTTPS for SSM and dnf. DNS/NTP are link-local.
   egress_rules:
     - description: SSH to instances inside the VPC
       from_port: 22
       to_port: 22
       protocol: tcp
       cidr_blocks: [10.3.0.0/16] # this environment's VPC CIDR
-    - description: HTTPS out (dnf updates - AL2023 repos are HTTPS-only)
+    - description: HTTPS out (SSM endpoints, dnf updates)
       from_port: 443
       to_port: 443
       protocol: tcp

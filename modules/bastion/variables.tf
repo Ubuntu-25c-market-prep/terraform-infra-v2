@@ -28,6 +28,13 @@ variable "instances" {
   }
 }
 
+variable "enable_ssm" {
+  description = "Instance profile with AmazonSSMManagedInstanceCore: Session Manager shell and SSH-over-SSM, no inbound port needed"
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "create_security_group" {
   description = "Create a security group (SSH in from ssh_ingress_cidrs, out per egress_rules) and attach it to every instance. Requires vpc_id."
   type        = bool
@@ -61,7 +68,7 @@ variable "ssh_public_key" {
 }
 
 variable "ssh_ingress_cidrs" {
-  description = "CIDRs allowed to SSH (port 22) into the module-created security group; [] = no SSH ingress rule"
+  description = "CIDRs allowed to SSH (port 22) into the module-created security group; [] = no inbound rule at all (SSH goes over SSM)"
   type        = list(string)
   default     = []
   nullable    = false

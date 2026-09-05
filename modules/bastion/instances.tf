@@ -17,6 +17,8 @@ resource "aws_instance" "this" {
   )
   user_data = each.value.user_data
 
+  iam_instance_profile = var.enable_ssm ? aws_iam_instance_profile.this[0].name : null
+
   # SSH access: either a module-created key pair (ssh_public_key) or an
   # existing one (key_name).
   key_name = var.ssh_public_key != null ? aws_key_pair.this[0].key_name : var.key_name
