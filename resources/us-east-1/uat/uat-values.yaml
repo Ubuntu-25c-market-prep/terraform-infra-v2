@@ -1,4 +1,3 @@
 env: uat
 
-tags:
-  env: uat
+tags: {} # Env is a provider default tag; IAM rejects env + Env (tag keys are case-insensitive)
