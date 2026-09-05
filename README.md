@@ -101,14 +101,17 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 |---|---|---|---|
 | VPC | 10.1.0.0/16 | 10.2.0.0/16 | 10.3.0.0/16 |
 | NAT | none | none | none |
-| Cluster API | public | private + VPC-only public | private + VPC-only public |
+| Cluster API | private, via bastion | private, via bastion | private, via bastion |
 | Nodes (default) | t3.medium 1/2/3 | t3.large 1/2/4 | m5.large 2/3/5 |
 | ECR tags | mutable | immutable | immutable |
 
 Nodes run in the public subnets in all environments, alongside the
 bastion and internet-facing load balancers: no NAT gateway anywhere, so
 `map_public_ip_on_launch` gives nodes public IPs and internet egress via
-the IGW, with security groups as the only inbound barrier. The private
+the IGW, with security groups as the only inbound barrier - the cluster
+SG itself, the bastion on :22, and the ALB SG on target ports. The
+Kubernetes API has no public endpoint; the bastion's security group is
+allowed to :443 on the control plane (`eks/README.md` "Access model"). The private
 subnets hold only the control-plane ENIs and have no internet egress
 (S3 and DynamoDB via the free gateway endpoints only). The `nat_gateway:` lines in each
 `network/config.yaml` are commented out and can be restored per env if
