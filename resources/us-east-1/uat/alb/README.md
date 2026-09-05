@@ -61,9 +61,12 @@ merge-before-release rule as IRSA roles in the eks stack.
 ## Prerequisites
 
 - The AWS Load Balancer Controller addon (Flux) with the **binding-only**
-  IRSA role - see the commented `aws-lb-controller` block in
-  `../eks/iam.yaml`. Because Terraform creates the LB resources, the role
-  is register/deregister + describe, a fraction of the upstream policy.
+  IRSA role: the `uat-AWSLoadBalancerControllerBindingPolicy-us-east-1`
+  policy is active in `../iam-roles/config.yaml`; paste its ARN (output
+  `policy_arns`) into the `uat-irsa-aws-load-balancer-controller-us-east-1`
+  entry in `../eks/iam.yaml` and uncomment it. Because Terraform creates
+  the LB resources, the role is register/deregister + describe, a
+  fraction of the upstream policy.
 - The `network` and `eks` stacks applied, and their output ids
   (`vpc_id`, subnet ids, `cluster_security_group_id`) pasted into
   `config.yaml` - this stack reads no remote state.
@@ -79,7 +82,7 @@ split is the piece that makes the multi-cluster path cheap later.
 
 | Key | Meaning |
 |---|---|
-| `name` | becomes `<org>-<env>-<name>`; also prefixes target group names (32-char limit overall) |
+| `name` | the full ALB name, `<env>-alb-<region>` (`uat-alb-us-east-1`); also the ALB SG name and the target group prefix. Target group names are `<name>-<entry name>` and limited to 32 characters, so 14 remain for the entry name - it is a label, not the Service name |
 | `vpc_id`, `subnet_ids` | network stack outputs. Public subnets for an internet-facing ALB, private for an internal one - must agree with `internal`. One per AZ, at least two |
 | `backend_security_group_id` | the eks stack's `cluster_security_group_id` - pod ENIs carry it under the VPC CNI; the module opens it to the ALB per target port |
 | `internal` | `true` = no public IPs (scheme internal) |
