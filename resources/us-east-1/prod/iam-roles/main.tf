@@ -17,8 +17,6 @@ locals {
   # (shallow: a nested map stated in an entry replaces the whole default map).
   roles = [for item in local.config.roles : merge(local.config.role_defaults, item)]
 
-  name_prefix = "${local.config.org}-${local.config.env}"
-
   # Org/Env/Component/Repo are added by the provider's default_tags
   tags = local.config.tags
 }
@@ -28,7 +26,7 @@ locals {
 module "iam_roles" {
   source = "../../../../modules/iam-roles"
 
-  name     = local.name_prefix
+  name     = null # policy and role names are stated in full in config.yaml (<env>-<Name>-<region>)
   policies = local.config.policies
   roles    = local.roles
 

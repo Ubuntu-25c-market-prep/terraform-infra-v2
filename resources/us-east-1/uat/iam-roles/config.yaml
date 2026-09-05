@@ -5,33 +5,34 @@ iam:
   oidc_provider_arn: null # eks stack outputs; required only for irsa roles
   oidc_issuer_url: null
 
-  # Customer-managed policies, named <org>-<env>-<name>. Attach by ARN
+  # Customer-managed policies; `name` is the FULL name (<env>-<Name>-<region>,
+  # e.g. dev-AWSLoadBalancerControllerBindingPolicy-us-east-1). Attach by ARN
   # (policy_arns here, attached_policies in eks/iam.yaml) - read the ARN
   # from the policy_arns output after apply.
-  policies: []
-  # policies:
-  #   - name: AWSLoadBalancerControllerBindingPolicy # binding-only: Terraform owns the LBs
-  #     statements:
-  #       - actions:
-  #           - elasticloadbalancing:DescribeTargetGroups
-  #           - elasticloadbalancing:DescribeTargetGroupAttributes
-  #           - elasticloadbalancing:DescribeTargetHealth
-  #           - elasticloadbalancing:DescribeLoadBalancers
-  #           - elasticloadbalancing:DescribeListeners
-  #           - elasticloadbalancing:DescribeRules
-  #           - elasticloadbalancing:DescribeTags
-  #           - ec2:DescribeInstances
-  #           - ec2:DescribeSubnets
-  #           - ec2:DescribeSecurityGroups
-  #           - ec2:DescribeNetworkInterfaces
-  #           - ec2:DescribeVpcs
-  #           - ec2:DescribeAvailabilityZones
-  #         resources: ["*"]
-  #       - actions:
-  #           - elasticloadbalancing:RegisterTargets
-  #           - elasticloadbalancing:DeregisterTargets
-  #         resources: ["*"] # or the target group ARNs from the alb/nlb outputs
-  #   - name: VeleroPolicy
+  policies:
+    - name: uat-AWSLoadBalancerControllerBindingPolicy-us-east-1 # binding-only: Terraform owns the LBs (alb/nlb stacks)
+      description: TargetGroupBinding only - describe + register/deregister targets
+      statements:
+        - actions:
+            - elasticloadbalancing:DescribeTargetGroups
+            - elasticloadbalancing:DescribeTargetGroupAttributes
+            - elasticloadbalancing:DescribeTargetHealth
+            - elasticloadbalancing:DescribeLoadBalancers
+            - elasticloadbalancing:DescribeListeners
+            - elasticloadbalancing:DescribeRules
+            - elasticloadbalancing:DescribeTags
+            - ec2:DescribeInstances
+            - ec2:DescribeSubnets
+            - ec2:DescribeSecurityGroups
+            - ec2:DescribeNetworkInterfaces
+            - ec2:DescribeVpcs
+            - ec2:DescribeAvailabilityZones
+          resources: ["*"]
+        - actions:
+            - elasticloadbalancing:RegisterTargets
+            - elasticloadbalancing:DeregisterTargets
+          resources: ["*"] # or the target group ARNs from the alb/nlb outputs
+  #   - name: uat-VeleroPolicy-us-east-1
   #     statements:
   #       - actions:
   #           - ec2:DescribeVolumes
@@ -51,7 +52,7 @@ iam:
   #       - actions:
   #           - s3:ListBucket
   #         resources: ["arn:aws:s3:::u25c-uat-velero-<account-id>"]
-  #   - name: ExternalDnsPolicy
+  #   - name: uat-ExternalDnsPolicy-us-east-1
   #     statements:
   #       - actions:
   #           - route53:ChangeResourceRecordSets
@@ -61,7 +62,7 @@ iam:
   #           - route53:ListResourceRecordSets
   #           - route53:ListTagsForResource
   #         resources: ["*"]
-  #   - name: CertManagerRoute53Policy
+  #   - name: uat-CertManagerRoute53Policy-us-east-1
   #     statements:
   #       - actions:
   #           - route53:GetChange
@@ -73,7 +74,7 @@ iam:
   #       - actions:
   #           - route53:ListHostedZonesByName
   #         resources: ["*"]
-  #   - name: BedrockInvokePolicy
+  #   - name: uat-BedrockInvokePolicy-us-east-1
   #     statements:
   #       - actions:
   #           - bedrock:InvokeModel
@@ -88,10 +89,10 @@ iam:
 
   roles: []
   # roles:
-  #   - name: example-service # service role: assumed by an AWS service principal
+  #   - name: uat-example-service-us-east-1 # full name; service role: assumed by an AWS service principal
   #     services: [ec2.amazonaws.com]
   #     policy_arns: ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
-  #   - name: example-irsa # irsa role: assumable ONLY by this service account
+  #   - name: uat-irsa-example-us-east-1 # full name; irsa role: assumable ONLY by this service account
   #     type: irsa
   #     namespace: kube-system
   #     service_account: example-sa
