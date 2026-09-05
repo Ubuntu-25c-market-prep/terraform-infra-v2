@@ -23,11 +23,6 @@ output "private_route_table_ids" {
   value       = { for name, rt in aws_route_table.private : name => rt.id }
 }
 
-output "nat_gateway_public_ips" {
-  description = "Public IPs of the NAT gateways (empty when nat_gateway = none) - the source IPs of all private-subnet egress"
-  value       = { for key, eip in aws_eip.nat : key => eip.public_ip }
-}
-
 output "internet_gateway_id" {
   description = "ID of the internet gateway"
   value       = aws_internet_gateway.this.id

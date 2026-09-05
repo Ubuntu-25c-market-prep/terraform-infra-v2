@@ -41,7 +41,6 @@ route_tables:
       - public-b
   uat-route-us-east-1-private:
     enable_igw: false
-    # nat_gateway: public-a # uncomment for NAT egress (per-AZ NAT = one table per AZ)
     enable_endpoint_route: true
     attach_to_subnets:
       - private-a

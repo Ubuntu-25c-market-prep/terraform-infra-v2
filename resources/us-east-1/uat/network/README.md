@@ -14,10 +14,8 @@ internet lives in the public subnets with its own public IP. The
 free S3 and DynamoDB **gateway** endpoints keep both services - S3
 including ECR image layers - reachable from every subnet; they are the
 only free endpoint type (every other service, MongoDB Atlas included, is
-a billed interface endpoint). To restore private egress, uncomment the
-`nat_gateway:` line on the private table in `config.yaml` (one shared
-NAT); per-AZ NATs need one private table per AZ again, each naming a
-host subnet in its own AZ.
+a billed interface endpoint). NAT is not implemented in the vpc module; private egress would be a
+module change (the previous implementation is in git history).
 
 CIDRs compose as `<cidr_prefix>.<cidr_suffix>`: the VPC is
 `<cidr_prefix>.0.0/16` and every subnet hangs off the same prefix, so an
@@ -40,7 +38,7 @@ is ready. At go-live set `public_subnet_tags: {kubernetes.io/role/elb:
 | `gateway_endpoints` | free gateway endpoints to create: `s3`, `dynamodb` (wired to every table with `enable_endpoint_route: true`) |
 | `public_subnet_tags` / `private_subnet_tags` | extra tags on the subnets (see discovery-tag note above) |
 | `subnets.<name>` | `availability_zone` + `cidr_suffix`; referenced by name from `route_tables` |
-| `route_tables.<name>` | `enable_igw: true` = attached subnets are public; `nat_gateway: <public subnet>` = private egress via a NAT there; `enable_endpoint_route` = gateway endpoints on this table (wired all-or-nothing across tables); `attach_to_subnets` - exactly one table per subnet; several subnets may share one table (the private subnets do: with no NAT, per-AZ tables would be identical) |
+| `route_tables.<name>` | `enable_igw: true` = attached subnets are public; `enable_endpoint_route` = gateway endpoints on this table (wired all-or-nothing across tables); `attach_to_subnets` - exactly one table per subnet; several subnets may share one table (the private subnets do: with no NAT, per-AZ tables would be identical) |
 | `enable_peering_route`, `vpc_endpoint`, `custom_route`, `attach_to_igw` | template keys, **not wired** (no peering, firewall GWLBE or edge routing in this design) |
 | `peering_*`, `transit_gateway_attachment`, `vpn_gateway` | template sections, **not wired** - placeholders for future connectivity |
 

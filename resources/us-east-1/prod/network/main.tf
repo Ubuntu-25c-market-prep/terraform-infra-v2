@@ -66,18 +66,6 @@ locals {
     rt_name => rt.attach_to_subnets if !try(rt.enable_igw, false)
   }
 
-  # NAT mode for the vpc module, derived from the tables' nat_gateway
-  # keys: none stated = "none" (prod today), one distinct host subnet =
-  # "single", several = "per_az".
-  nat_host_subnets = distinct([
-    for rt in values(local.config.route_tables) : rt.nat_gateway
-    if try(rt.nat_gateway, null) != null
-  ])
-  nat_gateway_mode = (
-    length(local.nat_host_subnets) == 0 ? "none" :
-    length(local.nat_host_subnets) == 1 ? "single" : "per_az"
-  )
-
   # Any enable_endpoint_route: true wires the gateway endpoints to every table.
   gateway_endpoints_enabled = anytrue([
     for rt in values(local.config.route_tables) : try(rt.enable_endpoint_route, false)
@@ -109,8 +97,6 @@ module "vpc" {
   # (prod-route-us-east-1-public, ...), so config and AWS console match.
   public_route_table_name = local.public_route_table_name
   private_route_tables    = local.private_route_tables
-
-  nat_gateway = local.nat_gateway_mode
 
   public_subnet_tags  = local.config.public_subnet_tags
   private_subnet_tags = local.config.private_subnet_tags

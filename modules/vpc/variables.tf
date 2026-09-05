@@ -38,7 +38,7 @@ variable "public_subnets" {
 }
 
 variable "private_subnets" {
-  description = "Private subnets to create in the VPC (no direct internet route; egress only via NAT when enabled)"
+  description = "Private subnets to create in the VPC (no internet route; gateway endpoints only)"
   type = list(object({
     name              = string
     cidr_block        = string
@@ -55,18 +55,6 @@ variable "private_subnets" {
   validation {
     condition     = length(distinct([for s in var.private_subnets : s.cidr_block])) == length(var.private_subnets)
     error_message = "Subnet CIDR blocks must be unique - two subnets cannot share a range."
-  }
-}
-
-variable "nat_gateway" {
-  description = "NAT for the private subnets: none (isolated - S3 still reachable via the gateway endpoint), single (one NAT, cheapest), per_az (one NAT per private-subnet AZ, survives an AZ failure)"
-  type        = string
-  default     = "none"
-  nullable    = false
-
-  validation {
-    condition     = contains(["none", "single", "per_az"], var.nat_gateway)
-    error_message = "nat_gateway must be none, single or per_az."
   }
 }
 

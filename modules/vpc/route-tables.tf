@@ -19,8 +19,6 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Private tables route the subnets they list; with per_az NAT a table
-# must not span AZs.
 resource "aws_route_table" "private" {
   for_each = local.private_route_tables
 
@@ -39,23 +37,7 @@ resource "aws_route_table" "private" {
       condition     = length(local.private_route_table_subnets) == length(distinct(local.private_route_table_subnets))
       error_message = "A private subnet is listed in more than one private route table - each subnet attaches to exactly one."
     }
-    precondition {
-      condition     = var.nat_gateway != "per_az" || local.private_route_table_az[each.key] != null
-      error_message = "Route table '${each.key}' spans several AZs - with nat_gateway = per_az every private table must serve ONE AZ (split it per AZ, or use nat_gateway = single)."
-    }
   }
-}
-
-resource "aws_route" "private_nat" {
-  for_each = var.nat_gateway == "none" ? {} : local.private_route_tables
-
-  route_table_id         = aws_route_table.private[each.key].id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id = (
-    var.nat_gateway == "single"
-    ? aws_nat_gateway.this["single"].id
-    : aws_nat_gateway.this[local.private_route_table_az[each.key]].id
-  )
 }
 
 resource "aws_route_table_association" "private" {

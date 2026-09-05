@@ -10,7 +10,7 @@ environment, all values in YAML, CI driven by commit messages.
 ├── .github/workflows/     # plan on branch push, apply on merge - the stack
 │                          # folder comes from the commit message (see below)
 ├── modules/               # Reusable child modules - never run directly
-│   ├── vpc/               # VPC, public+private subnets, S3+DynamoDB gateway endpoints (NAT optional, off)
+│   ├── vpc/               # VPC, public+private subnets, S3+DynamoDB gateway endpoints, no NAT
 │   ├── ecr/               # Repositories + lifecycle policies
 │   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
@@ -113,9 +113,8 @@ SG itself, the bastion on :22, and the ALB SG on target ports. The
 Kubernetes API has no public endpoint; the bastion's security group is
 allowed to :443 on the control plane (`eks/README.md` "Access model"). The private
 subnets hold only the control-plane ENIs and have no internet egress
-(S3 and DynamoDB via the free gateway endpoints only). The `nat_gateway:` lines in each
-`network/config.yaml` are commented out and can be restored per env if
-private egress is ever needed.
+(S3 and DynamoDB via the free gateway endpoints only). NAT is not implemented in the vpc module;
+if private egress is ever needed it is a deliberate module change.
 
 ## State
 
