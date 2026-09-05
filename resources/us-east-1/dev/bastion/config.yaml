@@ -5,7 +5,7 @@ bastion:
   vpc_id: vpc-0849e0f6efc203ff5  # network stack output
   enable_ssm: true              # default: true; instance profile with AmazonSSMManagedInstanceCore
   create_security_group: true   # default: true
-  ssh_public_key: CHANGE_ME     # default: null; the team's PUBLIC key - Terraform creates the key pair
+  ssh_public_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEjJFFAcxWWZ/n58mdK1xEd7iFO2u7X/qOweZdT3bvfO dev-bastion-us-east-1 # team PUBLIC key; private half in SSM /dev/bastion/ssh-private-key
   key_name: null                # default: null; an existing key pair instead (then ssh_public_key: null)
   ssh_ingress_cidrs: []         # default: []; no inbound rule - SSH goes over SSM
 
