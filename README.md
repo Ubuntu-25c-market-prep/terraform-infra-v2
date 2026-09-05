@@ -56,6 +56,18 @@ Push to a feature branch → plan runs in that folder. Merge to `main` →
 apply runs there. One stack per PR. Full walkthrough:
 [`.github/workflows/README.md`](.github/workflows/README.md).
 
+## Naming
+
+Resources are named `<env>-<component>-<region>` - `dev-vpc-us-east-1`,
+`dev-eks-us-east-1`, `dev-bastion-us-east-1`, `dev-alb-us-east-1` - with
+the parts a component owns appended (`dev-eks-us-east-1-node-role`,
+`dev-vpc-us-east-1-public-a`). The org is not in the name: every
+resource carries it as the `Org` default tag. Exceptions: IRSA roles
+(`<env>-irsa-<workload>-<region>`), node groups (`<env>-ng-<pool>-<region>`,
+the `ng/` file name), route tables (`<env>-route-<region>-<public|private>`),
+and S3 buckets / ECR repositories, which keep `<org>-<env>-<name>` for
+global uniqueness.
+
 ## Configuration model
 
 Each stack merges four YAML layers into one config, most specific last:
@@ -87,7 +99,7 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 
 | | dev | uat | prod |
 |---|---|---|---|
-| VPC | 10.0.0.0/16 | 10.2.0.0/16 | 10.1.0.0/16 |
+| VPC | 10.1.0.0/16 | 10.2.0.0/16 | 10.3.0.0/16 |
 | NAT | none | none | none |
 | Cluster API | public | private + VPC-only public | private + VPC-only public |
 | Nodes (default) | t3.medium 1/2/3 | t3.large 1/2/4 | m5.large 2/3/5 |

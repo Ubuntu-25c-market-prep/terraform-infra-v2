@@ -58,13 +58,14 @@ locals {
 
   # Deployed route tables carry the config keys as their Name tags. The
   # module has ONE public route table, so every public subnet must share
-  # one table (one() enforces); private tables are per subnet.
+  # one table (one() enforces); private tables list the subnets they
+  # route - several subnets may share one (no NAT = nothing AZ-specific).
   public_route_table_name = one(distinct([
     for subnet in local.public_subnets : local.subnet_route_table_name[subnet.name]
   ]))
-  private_route_table_names = {
-    for subnet in local.private_subnets :
-    subnet.name => local.subnet_route_table_name[subnet.name]
+  private_route_tables = {
+    for rt_name, rt in local.config.route_tables :
+    rt_name => rt.attach_to_subnets if !try(rt.enable_igw, false)
   }
 
   # NAT mode for the vpc module, derived from the tables' nat_gateway
@@ -107,8 +108,8 @@ module "vpc" {
 
   # The deployed tables are literally named like the config keys
   # (uat-route-us-east-1-public, ...), so config and AWS console match.
-  public_route_table_name   = local.public_route_table_name
-  private_route_table_names = local.private_route_table_names
+  public_route_table_name = local.public_route_table_name
+  private_route_tables    = local.private_route_tables
 
   nat_gateway = local.nat_gateway_mode
 

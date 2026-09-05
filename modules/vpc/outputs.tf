@@ -19,7 +19,7 @@ output "private_subnet_ids" {
 }
 
 output "private_route_table_ids" {
-  description = "Map of private subnet name to its route table ID"
+  description = "Map of private route table Name to ID"
   value       = { for name, rt in aws_route_table.private : name => rt.id }
 }
 

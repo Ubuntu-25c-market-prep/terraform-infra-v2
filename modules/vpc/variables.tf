@@ -76,9 +76,9 @@ variable "public_route_table_name" {
   default     = null
 }
 
-variable "private_route_table_names" {
-  description = "Explicit Name tag per private subnet's route table, keyed by SUBNET name; missing keys fall back to <name>-<subnet>"
-  type        = map(string)
+variable "private_route_tables" {
+  description = "Private route tables keyed by Name tag, each listing the private subnets (by name) it routes; every private subnet must appear in exactly one table. {} = one table per private subnet, named <name>-<subnet>"
+  type        = map(list(string))
   default     = {}
   nullable    = false
 }
