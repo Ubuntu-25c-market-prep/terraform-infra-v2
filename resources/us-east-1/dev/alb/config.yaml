@@ -6,7 +6,7 @@ alb:
   subnet_ids:                               # network stack output; PUBLIC for internet-facing, PRIVATE for internal
     - subnet-01fdc5bc4739096a9 # public-a
     - subnet-0914baf217fb5fd25 # public-b
-  backend_security_group_id: sg-REPLACE-ME  # eks stack output cluster_security_group_id
+  backend_security_group_id: sg-0be780858bef4f506 # eks stack output cluster_security_group_id
   internal: false                           # default: false (true = no public IPs; subnet_ids must be private)
   ingress_cidrs: [0.0.0.0/0]                # default: [0.0.0.0/0]; narrow for internal/admin ALBs
   ip_address_type: ipv4                     # default: ipv4 | dualstack
