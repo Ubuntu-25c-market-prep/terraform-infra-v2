@@ -7,8 +7,8 @@ repo at all.
 
 ## Policies
 
-`policies[]` creates customer-managed policies named
-`<org>-<env>-<name>`. They exist so any role can attach them **by ARN**:
+`policies[]` creates customer-managed policies named exactly as their
+`name` (`<env>-<Name>-<region>`, e.g. `uat-AWSLoadBalancerControllerBindingPolicy-us-east-1`). They exist so any role can attach them **by ARN**:
 roles in this file (`policy_arns`) or IRSA roles in `eks/iam.yaml`
 (`attached_policies`). Flow: add the entry → apply this stack → read the
 ARN from the `policy_arns` output → paste it where it is used. The
@@ -16,7 +16,7 @@ commented entries are the policies the `eks/iam.yaml` examples expect.
 
 | Key | Meaning |
 |---|---|
-| `name` | unique; becomes `<org>-<env>-<name>` |
+| `name` | unique; the full policy name, `<env>-<Name>-<region>` |
 | `description` | optional |
 | `statements[]` | `effect` (default `Allow`), `actions`, `resources` |
 
@@ -31,7 +31,7 @@ commented entries are the policies the `eks/iam.yaml` examples expect.
 
 | Key | Meaning |
 |---|---|
-| `name` | becomes `<org>-<env>-<name>` |
+| `name` | the full role name, `<env>-<name>-<region>` |
 | `description`, `max_session_duration`, `permissions_boundary` | optional |
 | `policy_arns` | managed policy ARNs to attach (AWS-managed, or this stack's `policy_arns` output) |
 | `policy` | inline statements; a role must grant something via `policy_arns` and/or `policy` |
