@@ -41,6 +41,7 @@ route_tables:
       - public-b
   uat-route-us-east-1-private:
     enable_igw: false
+    # nat_gateway: public-a # template key, not wired (no NAT in the vpc module)
     enable_endpoint_route: true
     attach_to_subnets:
       - private-a

@@ -38,7 +38,7 @@ public subnets (no NAT), so Karpenter must not place them in private ones.
 | `public_subnet_tags` / `private_subnet_tags` | extra tags on the subnets (see discovery-tag note above) |
 | `subnets.<name>` | `availability_zone` + `cidr_suffix`; referenced by name from `route_tables` |
 | `route_tables.<name>` | `enable_igw: true` = attached subnets are public; `enable_endpoint_route` = gateway endpoints on this table (wired all-or-nothing across tables); `attach_to_subnets` - exactly one table per subnet; several subnets may share one table (the private subnets do: with no NAT, per-AZ tables would be identical) |
-| `enable_peering_route`, `vpc_endpoint`, `custom_route`, `attach_to_igw` | template keys, **not wired** (no peering, firewall GWLBE or edge routing in this design) |
+| `nat_gateway`, `enable_peering_route`, `vpc_endpoint`, `custom_route`, `attach_to_igw` | template keys, **not wired** (no peering, firewall GWLBE or edge routing in this design) |
 | `peering_*`, `transit_gateway_attachment`, `vpn_gateway` | template sections, **not wired** - placeholders for future connectivity |
 
 ## Outputs used by other stacks
