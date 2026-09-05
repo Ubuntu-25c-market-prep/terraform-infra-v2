@@ -1,7 +1,7 @@
 # Terraform OWNS the NLB (listeners, target groups, SGs); the cluster only
 # fills the target groups via TargetGroupBinding. README.md.
 nlb:
-  name: nlb
+  name: uat-nlb-us-east-1 # <env>-nlb-<region>; also the NLB SG name and the target group prefix
   vpc_id: vpc-REPLACE-ME                    # network stack output
   subnet_ids:                               # network stack output; PUBLIC for internet-facing, PRIVATE for internal
     - subnet-REPLACE-ME-public-a

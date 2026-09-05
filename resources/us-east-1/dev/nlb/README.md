@@ -111,7 +111,7 @@ add later.
 
 | Key | Meaning |
 |---|---|
-| `name` | becomes `<org>-<env>-<name>`; also prefixes target group names (32-char limit overall) |
+| `name` | the full NLB name, `<env>-nlb-<region>` (`dev-nlb-us-east-1`); also the NLB SG name and the target group prefix (32-char limit overall) |
 | `vpc_id`, `subnet_ids` | network stack outputs. Public subnets for an internet-facing NLB, private for an internal one - must agree with `internal`. One per AZ, at least two |
 | `backend_security_group_id` | the eks stack's `cluster_security_group_id` - pod ENIs carry it under the VPC CNI; the module opens it to the NLB SG per target port |
 | `internal` | `true` = no public IPs (scheme internal) |
