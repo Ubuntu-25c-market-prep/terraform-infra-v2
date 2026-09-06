@@ -22,12 +22,13 @@ commented entries are the policies the `eks/iam.yaml` examples expect.
 
 ## Roles
 
-`roles[]` entries merge over `role_defaults`. Two types:
+`roles[]` entries merge over `role_defaults`. Three types:
 
 | Type | Assumed by | Required keys |
 |---|---|---|
 | `service` | AWS service principals (`ec2.amazonaws.com`, …) | `services` (at least one) |
 | `irsa` | exactly one Kubernetes service account | `namespace`, `service_account` - the trust policy is conditioned on `system:serviceaccount:<ns>:<sa>`; without it any pod could assume the role. Needs `oidc_provider_arn` / `oidc_issuer_url` from the eks stack |
+| `github` | one GitHub repository's workflow on one ref (a CI pipeline, e.g. an app build pushing to ECR) | `github_org` (`<org>@<org id>`), `github_repository` (`<repo>@<repo id>`), `github_ref` - the trust is `StringEquals` on `repo:<org>/<repo>:ref:<ref>` in this org's immutable-id form; a plain `repo:<org>/<repo>` matches nothing. Needs `github_oidc_provider_arn` (the account's GitHub OIDC provider) |
 
 | Key | Meaning |
 |---|---|

@@ -1,9 +1,11 @@
 # Non-cluster IAM: standalone policies (policies) and roles (roles), each
-# merged over role_defaults. Role types: service (AWS principals) or
-# irsa (ONE Kubernetes service account). README.md "Keys".
+# merged over role_defaults. Role types: service (AWS principals), irsa
+# (ONE Kubernetes service account), github (ONE repository's workflow on
+# ONE ref). README.md "Keys".
 iam:
   oidc_provider_arn: null # eks stack outputs; required only for irsa roles
   oidc_issuer_url: null
+  github_oidc_provider_arn: arn:aws:iam::808540602855:oidc-provider/token.actions.githubusercontent.com # required only for github roles
 
   # Customer-managed policies; `name` is the FULL name (<env>-<Name>-<region>,
   # e.g. dev-AWSLoadBalancerControllerBindingPolicy-us-east-1). Attach by ARN
@@ -87,8 +89,27 @@ iam:
     policy_arns: []
     policy: []
 
-  roles: []
-  # roles:
+  roles:
+    - name: dev-ecr-push-us-east-1 # github role: the business app build pushes images from main
+      type: github
+      github_org: Ubuntu-25c-market-prep@311938159
+      github_repository: apps-business@1319733881
+      github_ref: refs/heads/main
+      policy:
+        - effect: Allow
+          actions: ["ecr:GetAuthorizationToken"]
+          resources: ["*"]
+        - effect: Allow
+          actions:
+            - ecr:BatchCheckLayerAvailability
+            - ecr:InitiateLayerUpload
+            - ecr:UploadLayerPart
+            - ecr:CompleteLayerUpload
+            - ecr:PutImage
+            - ecr:BatchGetImage
+            - ecr:DescribeImages
+            - ecr:DescribeRepositories
+          resources: ["arn:aws:ecr:us-east-1:808540602855:repository/dev-ecr-us-east-1/*"]
   #   - name: dev-example-service-us-east-1 # full name; service role: assumed by an AWS service principal
   #     services: [ec2.amazonaws.com]
   #     policy_arns: ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
@@ -100,4 +121,13 @@ iam:
   #     policy: # inline statements, besides or instead of policy_arns
   #       - effect: Allow
   #         actions: ["sqs:ReceiveMessage"]
+  #         resources: ["*"]
+  #   - name: dev-example-github-us-east-1 # github role: assumable ONLY by one repository's workflow on one ref
+  #     type: github
+  #     github_org: Ubuntu-25c-market-prep@311938159 # org@id - this org issues immutable-id subjects
+  #     github_repository: CHANGE_ME-repo@CHANGE_ME-id # repo@id, from `gh api /repos/<org>/<repo> --jq .id`
+  #     github_ref: refs/heads/main
+  #     policy:
+  #       - effect: Allow
+  #         actions: ["ecr:GetAuthorizationToken"]
   #         resources: ["*"]
