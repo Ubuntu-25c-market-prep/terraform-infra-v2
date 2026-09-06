@@ -69,6 +69,11 @@ S3 buckets (`<env>-s3-<region>-<name>-<account-id>`) and ECR
 repositories (`<env>-ecr-<region>/<app>`; the dev registry serves every
 environment until uat and prod have their own accounts).
 
+## Getting in
+
+Laptop setup, node shells and kubectl through the bastion:
+[`docs/access.md`](docs/access.md).
+
 ## Configuration model
 
 Each stack merges four YAML layers into one config, most specific last:
