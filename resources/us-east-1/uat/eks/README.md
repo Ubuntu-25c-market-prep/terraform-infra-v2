@@ -35,6 +35,12 @@ extra security group (`uat-eks-us-east-1-cluster-ingress`). Node groups are
 `<env>-irsa-<workload>-<region>`. Changing `cluster_name` recreates the
 cluster.
 
+## Reaching the cluster
+
+kubectl from your laptop through the bastion tunnel, one-time setup and
+daily commands: [`docs/access.md`](../../../../docs/access.md). Nothing
+runs on the bastion or the nodes - they have no cluster identity.
+
 ## Access model
 
 - **Kubernetes API**: the public endpoint is off; the private endpoint is
