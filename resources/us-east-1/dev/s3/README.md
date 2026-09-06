@@ -1,7 +1,8 @@
 # s3 - buckets
 
-Hardened buckets (encrypted, private, TLS-only, versioned), one per
-entry in `config.yaml` `buckets`, merged over `bucket_defaults`. The
+Hardened buckets (encrypted, private, TLS-only, versioned, incomplete
+multipart uploads aborted after 7 days), one per entry in `config.yaml`
+`buckets`, merged over `bucket_defaults`. The
 final name is `<env>-s3-<region>-<name>-<account-id>`
 (`dev-s3-us-east-1-velero-<account-id>`); the account id is appended at
 plan time for global uniqueness, which leaves 33 characters for `name`

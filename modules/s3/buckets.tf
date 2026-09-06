@@ -81,9 +81,20 @@ resource "aws_s3_bucket_policy" "deny_insecure_transport" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
-  for_each = { for name, bucket in local.buckets : name => bucket if length(bucket.lifecycle_rules) > 0 }
+  for_each = local.buckets
 
   bucket = aws_s3_bucket.this[each.key].id
+
+  # Parts of an upload the client never completed are invisible and billed forever.
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
 
   dynamic "rule" {
     for_each = each.value.lifecycle_rules
