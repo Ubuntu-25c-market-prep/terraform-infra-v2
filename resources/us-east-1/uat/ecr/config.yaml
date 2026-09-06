@@ -1,4 +1,6 @@
 # One entry per repository under repositories, merged over repository_defaults.
+# Repositories are created as <env>-ecr-<region>/<name>. The dev registry
+# serves every environment until uat/prod have their own accounts.
 ecr:
   repository_defaults:
     image_tag_mutability: IMMUTABLE # immutable - deployed tags can never be overwritten

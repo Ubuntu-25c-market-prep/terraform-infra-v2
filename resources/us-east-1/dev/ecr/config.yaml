@@ -1,4 +1,6 @@
 # One entry per repository under repositories, merged over repository_defaults.
+# Repositories are created as <env>-ecr-<region>/<name>. The dev registry
+# serves every environment until uat/prod have their own accounts.
 ecr:
   repository_defaults:
     image_tag_mutability: MUTABLE   # mutable - dev rebuilds at will
@@ -7,7 +9,7 @@ ecr:
     untagged_expiry_days: 14      # module default: null (never expire)
     max_image_count: 50            # module default: null; counts tagged images too - size generously
 
-  repositories: []
-  # repositories:
+  repositories:
+    - name: storefront # business app (apps-business); pushed by its pipeline once the push role exists
   #   - name: app # lowercase alphanumeric with . _ / -
   #     image_tag_mutability: IMMUTABLE # any repository_defaults key can be overridden

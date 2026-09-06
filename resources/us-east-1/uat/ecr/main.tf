@@ -17,8 +17,6 @@ locals {
   # (shallow: a nested map stated in an entry replaces the whole default map).
   repositories = [for item in local.config.repositories : merge(local.config.repository_defaults, item)]
 
-  name_prefix = "${local.config.org}-${local.config.env}"
-
   # Org/Env/Component/Repo are added by the provider's default_tags
   tags = local.config.tags
 }
@@ -26,7 +24,7 @@ locals {
 module "ecr" {
   source = "../../../../modules/ecr"
 
-  name         = local.name_prefix
+  name         = "${local.config.env}-ecr-${local.config.region}" # <env>-ecr-<region>/<app>
   repositories = local.repositories
 
   tags = local.tags
