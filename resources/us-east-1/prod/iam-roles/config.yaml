@@ -48,10 +48,10 @@ iam:
   #           - s3:PutObject
   #           - s3:AbortMultipartUpload
   #           - s3:ListMultipartUploadParts
-  #         resources: ["arn:aws:s3:::u25c-prod-velero-<account-id>/*"]
+  #         resources: ["arn:aws:s3:::prod-s3-us-east-1-velero-<account-id>/*"]
   #       - actions:
   #           - s3:ListBucket
-  #         resources: ["arn:aws:s3:::u25c-prod-velero-<account-id>"]
+  #         resources: ["arn:aws:s3:::prod-s3-us-east-1-velero-<account-id>"]
   #   - name: prod-ExternalDnsPolicy-us-east-1
   #     statements:
   #       - actions:

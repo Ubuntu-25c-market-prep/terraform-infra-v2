@@ -1,5 +1,5 @@
 # One entry per bucket under buckets, merged over bucket_defaults.
-# Bucket names come out as <org>-<env>-<name>-<account-id>.
+# Bucket names come out as <env>-s3-<region>-<name>-<account-id> (name: at most 33 chars).
 s3:
   bucket_defaults:
     versioning: true
