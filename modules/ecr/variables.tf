@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Prefix for the repository names"
+  description = "Registry namespace; repositories are created as <name>/<repository name>"
   type        = string
 }
 
