@@ -9,6 +9,10 @@ data "aws_iam_policy_document" "assume" {
       condition     = each.value.type != "irsa" || (var.oidc_provider_arn != null && var.oidc_issuer_url != null)
       error_message = "Role '${each.value.name}' is type irsa but oidc_provider_arn/oidc_issuer_url are null - apply the eks/cluster stack with create_oidc = true first."
     }
+    precondition {
+      condition     = each.value.type != "github" || var.github_oidc_provider_arn != null
+      error_message = "Role '${each.value.name}' is type github but github_oidc_provider_arn is null."
+    }
   }
 
   dynamic "statement" {
@@ -44,6 +48,32 @@ data "aws_iam_policy_document" "assume" {
       condition {
         test     = "StringEquals"
         variable = "${local.oidc_host}:aud"
+        values   = ["sts.amazonaws.com"]
+      }
+    }
+  }
+
+  # github: one repository, one ref; the org uses immutable-id subjects (org@id/repo@id)
+  dynamic "statement" {
+    for_each = each.value.type == "github" ? [1] : []
+
+    content {
+      actions = ["sts:AssumeRoleWithWebIdentity"]
+
+      principals {
+        type        = "Federated"
+        identifiers = [var.github_oidc_provider_arn]
+      }
+
+      condition {
+        test     = "StringEquals"
+        variable = "token.actions.githubusercontent.com:sub"
+        values   = ["repo:${each.value.github_org}/${each.value.github_repository}:ref:${each.value.github_ref}"]
+      }
+
+      condition {
+        test     = "StringEquals"
+        variable = "token.actions.githubusercontent.com:aud"
         values   = ["sts.amazonaws.com"]
       }
     }

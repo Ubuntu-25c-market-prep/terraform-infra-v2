@@ -30,8 +30,9 @@ module "iam_roles" {
   policies = local.config.policies
   roles    = local.roles
 
-  oidc_provider_arn = local.config.oidc_provider_arn
-  oidc_issuer_url   = local.config.oidc_issuer_url
+  oidc_provider_arn        = local.config.oidc_provider_arn
+  oidc_issuer_url          = local.config.oidc_issuer_url
+  github_oidc_provider_arn = local.config.github_oidc_provider_arn
 
   tags = local.tags
 }

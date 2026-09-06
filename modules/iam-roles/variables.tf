@@ -5,7 +5,7 @@ variable "name" {
 }
 
 variable "roles" {
-  description = "IAM roles to create; type is either service or irsa"
+  description = "IAM roles to create; type is service, irsa or github"
   type = list(object({
     name                 = string
     type                 = optional(string, "service")
@@ -13,6 +13,9 @@ variable "roles" {
     services             = optional(list(string), [])
     namespace            = optional(string)
     service_account      = optional(string)
+    github_org           = optional(string) # github: <org>@<org id>
+    github_repository    = optional(string) # github: <repo>@<repo id>
+    github_ref           = optional(string) # github: refs/heads/main, refs/tags/*, ...
     policy_arns          = optional(list(string), [])
     max_session_duration = optional(number)
     permissions_boundary = optional(string)
@@ -26,8 +29,8 @@ variable "roles" {
   nullable = false
 
   validation {
-    condition     = alltrue([for role in var.roles : contains(["service", "irsa"], role.type)])
-    error_message = "Role type must be service or irsa."
+    condition     = alltrue([for role in var.roles : contains(["service", "irsa", "github"], role.type)])
+    error_message = "Role type must be service, irsa or github."
   }
 
   validation {
@@ -42,6 +45,15 @@ variable "roles" {
       if role.type == "irsa"
     ])
     error_message = "An irsa role must set namespace AND service_account - the trust policy is conditioned on system:serviceaccount:<namespace>:<service_account> (without it, a pod in any namespace could assume the role)."
+  }
+
+  validation {
+    condition = alltrue([
+      for role in var.roles :
+      role.github_org != null && role.github_repository != null && role.github_ref != null
+      if role.type == "github"
+    ])
+    error_message = "A github role must set github_org, github_repository and github_ref - the trust policy is conditioned on repo:<org>/<repository>:ref:<ref>."
   }
 
   validation {
@@ -86,6 +98,12 @@ variable "oidc_provider_arn" {
 
 variable "oidc_issuer_url" {
   description = "URL of the cluster's OIDC issuer; required for irsa roles"
+  type        = string
+  default     = null
+}
+
+variable "github_oidc_provider_arn" {
+  description = "ARN of the GitHub Actions OIDC provider (token.actions.githubusercontent.com); required for github roles"
   type        = string
   default     = null
 }
