@@ -9,7 +9,7 @@ ecr:
     untagged_expiry_days: 14      # module default: null (never expire)
     max_image_count: 50            # module default: null; counts tagged images too - size generously
 
-  repositories: []
-  # repositories:
+  repositories:
+    - name: storefront # business app (apps-business); pushed by its pipeline once the push role exists
   #   - name: app # lowercase alphanumeric with . _ / -
   #     image_tag_mutability: IMMUTABLE # any repository_defaults key can be overridden
