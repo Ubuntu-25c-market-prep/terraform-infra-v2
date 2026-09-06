@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Prefix for the bucket names (usually <org>-<env>)"
+  description = "Prefix for the bucket names, <env>-s3-<region>"
   type        = string
 }
 

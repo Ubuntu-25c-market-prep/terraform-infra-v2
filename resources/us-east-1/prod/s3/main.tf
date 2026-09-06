@@ -17,8 +17,6 @@ locals {
   # (shallow: a nested map stated in an entry replaces the whole default map).
   buckets = [for item in local.config.buckets : merge(local.config.bucket_defaults, item)]
 
-  name_prefix = "${local.config.org}-${local.config.env}"
-
   # Org/Env/Component/Repo are added by the provider's default_tags
   tags = local.config.tags
 }
@@ -26,7 +24,7 @@ locals {
 module "s3" {
   source = "../../../../modules/s3"
 
-  name    = local.name_prefix
+  name    = "${local.config.env}-s3-${local.config.region}" # <env>-s3-<region>-<name>-<account-id>
   buckets = local.buckets
 
   tags = local.tags
