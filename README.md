@@ -65,8 +65,9 @@ the parts a component owns appended (`dev-eks-us-east-1-node`,
 resource carries it as the `Org` default tag. Exceptions: IRSA roles
 (`<env>-irsa-<workload>-<region>`), node groups (`<env>-ng-<pool>-<region>`,
 the `ng/` file name), route tables (`<env>-route-<region>-<public|private>`),
-and S3 buckets / ECR repositories, which keep `<org>-<env>-<name>` for
-global uniqueness.
+S3 buckets (`<env>-s3-<region>-<name>-<account-id>`) and ECR
+repositories (`<env>-ecr-<region>/<app>`; the dev registry serves every
+environment until uat and prod have their own accounts).
 
 ## Configuration model
 

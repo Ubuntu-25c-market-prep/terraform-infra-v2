@@ -24,7 +24,7 @@ locals {
 module "ecr" {
   source = "../../../../modules/ecr"
 
-  name         = "${local.config.org}-ecr-${local.config.region}" # one registry per account, org in the env slot: u25c-ecr-us-east-1/<app>
+  name         = "${local.config.env}-ecr-${local.config.region}" # <env>-ecr-<region>/<app>
   repositories = local.repositories
 
   tags = local.tags

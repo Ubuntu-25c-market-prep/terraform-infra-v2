@@ -1,11 +1,10 @@
 # ecr - container repositories
 
 One repository per entry in `config.yaml` `repositories`, each merged
-over `repository_defaults`. Names come out as `<org>-ecr-<region>/<name>`
-(`u25c-ecr-us-east-1/storefront`): one registry per account, the org in
-place of an environment, so images can be replicated between accounts
-under the same name once uat and prod have their own. Until then only
-the dev stack applies. Tags are immutable in prod.
+over `repository_defaults`. Names come out as `<env>-ecr-<region>/<name>`
+(`prod-ecr-us-east-1/storefront`). The dev registry serves every
+environment until uat and prod have their own accounts; the uat/prod
+stacks stay unapplied until then. Tags are immutable in prod.
 
 ## Adding a repository
 
@@ -15,12 +14,12 @@ the dev stack applies. Tags are immutable in prod.
 2. Open a PR with `- Path: /resources/us-east-1/prod/ecr` in the commit
    message. The plan shows the new repository; merge applies it.
 3. Read the URL from the `repository_urls` output:
-   `<account>.dkr.ecr.us-east-1.amazonaws.com/u25c-ecr-us-east-1/<name>`.
+   `<account>.dkr.ecr.us-east-1.amazonaws.com/prod-ecr-us-east-1/<name>`.
 
 Pulling from the cluster already works: the node role carries
 `AmazonEC2ContainerRegistryReadOnly`. Pushing needs a CI role with
 `ecr:GetAuthorizationToken` and push rights on
-`repository/u25c-ecr-us-east-1/*`; CI identities are not managed in this repo.
+`repository/prod-ecr-us-east-1/*`; CI identities are not managed in this repo.
 
 ## Keys
 

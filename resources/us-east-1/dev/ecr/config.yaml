@@ -1,6 +1,6 @@
 # One entry per repository under repositories, merged over repository_defaults.
-# Repositories are created as <org>-ecr-<region>/<name> - the same name in every
-# account, so this stack applies in its own account only (replication later).
+# Repositories are created as <env>-ecr-<region>/<name>. The dev registry
+# serves every environment until uat/prod have their own accounts.
 ecr:
   repository_defaults:
     image_tag_mutability: MUTABLE   # mutable - dev rebuilds at will
