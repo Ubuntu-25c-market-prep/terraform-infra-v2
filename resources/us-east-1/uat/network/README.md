@@ -21,11 +21,10 @@ CIDRs compose as `<cidr_prefix>.<cidr_suffix>`: the VPC is
 `<cidr_prefix>.0.0/16` and every subnet hangs off the same prefix, so an
 environment re-prefixes wholesale.
 
-**No `kubernetes.io/role/*elb` discovery tags** on the subnets on purpose:
-another EKS cluster runs in this account, and those tags would let any
-cluster's LB controller auto-place load balancers here before this infra
-is ready. At go-live set `public_subnet_tags: {kubernetes.io/role/elb:
-"1"}` and `private_subnet_tags: {kubernetes.io/role/internal-elb: "1"}`.
+**Discovery tags** are set in `config.yaml`: `kubernetes.io/role/elb` on
+public subnets, `kubernetes.io/role/internal-elb` on private, and
+`karpenter.sh/discovery: <cluster name>` on public only — nodes live in
+public subnets (no NAT), so Karpenter must not place them in private ones.
 
 ## Keys
 

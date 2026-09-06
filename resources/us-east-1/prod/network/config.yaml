@@ -11,8 +11,13 @@ map_public_ip_on_launch: true               # default: true (not in the template
 # Free gateway endpoints (not in the template), on every table with enable_endpoint_route: true
 gateway_endpoints: [s3, dynamodb]
 
-public_subnet_tags: {}  # default: {}; no kubernetes.io/role/* discovery tags until go-live (README)
-private_subnet_tags: {} # default: {}
+# karpenter.sh/discovery is public-only on purpose: nodes live in public
+# subnets (no NAT), a private-subnet node would have no egress.
+public_subnet_tags:
+  kubernetes.io/role/elb: "1"
+  karpenter.sh/discovery: prod-eks-us-east-1
+private_subnet_tags:
+  kubernetes.io/role/internal-elb: "1"
 
 # Public /20s on purpose: nodes and CNI /28 pod prefixes share them;
 # /24s fragment and starve new nodes of prefixes (gitops-flux#142).
