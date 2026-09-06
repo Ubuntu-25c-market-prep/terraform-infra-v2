@@ -11,5 +11,6 @@ ecr:
 
   repositories:
     - name: storefront # business app (apps-business); pushed by its pipeline once the push role exists
+      image_tag_mutability: IMMUTABLE # promoted to every env from here - a tag must never change meaning
   #   - name: app # lowercase alphanumeric with . _ / -
   #     image_tag_mutability: IMMUTABLE # any repository_defaults key can be overridden
