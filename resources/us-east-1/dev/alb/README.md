@@ -1,5 +1,12 @@
 # alb - Terraform-owned ALB + TargetGroupBinding
 
+> **Status: not applied.** The stack is kept in the repo so an ALB is
+> one apply away: the ids in `config.yaml` are current and the
+> binding-only LB-controller role in the eks stack is in place. Until
+> then nothing described below exists in AWS. A commit with
+> `- Path: /resources/us-east-1/dev/alb` creates the ALB on merge, so
+> leave the Path out of commits that only touch files here.
+
 One internet-facing ALB in front of the cluster, with a deliberate split
 of ownership:
 
