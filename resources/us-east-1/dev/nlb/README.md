@@ -1,5 +1,12 @@
 # nlb - Terraform-owned NLB + TargetGroupBinding
 
+> **Status: not applied.** The stack is kept in the repo so an NLB is
+> one apply away: paste the network and eks ids into `config.yaml`
+> (still `REPLACE-ME`); the binding-only LB-controller role in the eks
+> stack is in place. Until then nothing described below exists in AWS. A commit with
+> `- Path: /resources/us-east-1/dev/nlb` creates the NLB on merge, so
+> leave the Path out of commits that only touch files here.
+
 One internet-facing NLB in front of the cluster for L4 traffic (TCP, UDP,
 TLS passthrough or termination), with the same ownership split as the
 `alb` stack:
