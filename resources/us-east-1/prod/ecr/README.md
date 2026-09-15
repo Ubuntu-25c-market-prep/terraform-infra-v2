@@ -25,6 +25,7 @@ Pulling from the cluster already works: the node role carries
 
 | Key | Meaning |
 |---|---|
+| `name` | the registry namespace, `<env>-ecr-<region>` (`prod-ecr-us-east-1`); every repository is created as `<name>/<app>`. Changing it recreates every repository |
 | `image_tag_mutability` | `MUTABLE` (dev: tags can be re-pushed) or `IMMUTABLE` (uat/prod: a deployed tag can never be overwritten) |
 | `scan_on_push` | ECR vulnerability scan on every push |
 | `force_delete` | `true` lets `terraform destroy` delete a repository that still holds images |

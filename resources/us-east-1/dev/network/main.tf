@@ -15,8 +15,6 @@ locals {
     { tags = merge(local.global_values.tags, local.region_values.tags, local.env_values.tags) },
   )
 
-  name_prefix = "${local.config.org}-${local.config.env}"
-
   # Org/Env/Component/Repo are added by the provider's default_tags
   tags = local.config.tags
 
