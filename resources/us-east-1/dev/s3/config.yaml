@@ -1,6 +1,8 @@
 # One entry per bucket under buckets, merged over bucket_defaults.
 # Bucket names come out as <env>-s3-<region>-<name>-<account-id> (name: at most 33 chars).
 s3:
+  name: dev-s3-us-east-1 # <env>-s3-<region>: the bucket name prefix; buckets are <name>-<bucket>-<account-id>
+
   bucket_defaults:
     versioning: true
     force_destroy: false  # true lets terraform destroy a NON-EMPTY bucket

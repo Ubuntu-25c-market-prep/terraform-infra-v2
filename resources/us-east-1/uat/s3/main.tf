@@ -24,7 +24,7 @@ locals {
 module "s3" {
   source = "../../../../modules/s3"
 
-  name    = "${local.config.env}-s3-${local.config.region}" # <env>-s3-<region>-<name>-<account-id>
+  name    = local.config.name # <env>-s3-<region> (config.yaml); buckets are <name>-<bucket>-<account-id>
   buckets = local.buckets
 
   tags = local.tags
