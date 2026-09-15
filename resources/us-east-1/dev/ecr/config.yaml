@@ -2,6 +2,8 @@
 # Repositories are created as <env>-ecr-<region>/<name>. The dev registry
 # serves every environment until uat/prod have their own accounts.
 ecr:
+  name: dev-ecr-us-east-1 # <env>-ecr-<region>: the registry namespace; repositories are <name>/<app>
+
   repository_defaults:
     image_tag_mutability: MUTABLE   # mutable - dev rebuilds at will
     scan_on_push: true

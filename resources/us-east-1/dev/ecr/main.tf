@@ -24,7 +24,7 @@ locals {
 module "ecr" {
   source = "../../../../modules/ecr"
 
-  name         = "${local.config.env}-ecr-${local.config.region}" # <env>-ecr-<region>/<app>
+  name         = local.config.name # <env>-ecr-<region> (config.yaml); repositories are <name>/<app>
   repositories = local.repositories
 
   tags = local.tags
