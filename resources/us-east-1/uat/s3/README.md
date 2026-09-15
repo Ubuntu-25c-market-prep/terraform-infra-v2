@@ -24,6 +24,7 @@ plan time for global uniqueness, which leaves 33 characters for `name`
 
 | Key | Meaning |
 |---|---|
+| `name` | the bucket name prefix, `<env>-s3-<region>` (`uat-s3-us-east-1`); every bucket is created as `<name>-<bucket>-<account-id>`. Changing it recreates every bucket |
 | `versioning` | keep previous object versions |
 | `force_destroy` | `true` lets `terraform destroy` delete a bucket that still holds objects |
 | `lifecycle_rules[]` | `id`, optional `prefix`, `expiration_days` (current versions), `noncurrent_expiration_days` (old versions) |
