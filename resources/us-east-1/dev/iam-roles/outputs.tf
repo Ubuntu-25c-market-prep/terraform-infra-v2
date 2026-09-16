@@ -12,3 +12,8 @@ output "aws_load_balancer_controller_policy_arn" {
   description = "ARN of the full AWS Load Balancer Controller policy - paste into attached_policies in eks/iam.yaml"
   value       = aws_iam_policy.aws_load_balancer_controller.arn
 }
+
+output "cert_manager_policy_arn" {
+  description = "ARN of the cert-manager Route53 DNS-01 policy - paste into attached_policies in eks/iam.yaml"
+  value       = aws_iam_policy.cert_manager.arn
+}
