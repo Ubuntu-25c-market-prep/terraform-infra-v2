@@ -46,9 +46,9 @@ service_accounts:
   # dev-irsa-external-dns-us-east-1:
   #   namespace_service_account: external-dns/external-dns
   #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-ExternalDnsPolicy-us-east-1"]
-  # dev-irsa-cert-manager-us-east-1: # only if DNS01 via Route53
-  #   namespace_service_account: cert-manager/cert-manager
-  #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-CertManagerRoute53Policy-us-east-1"]
+  dev-irsa-cert-manager-us-east-1: # DNS01 via Route53, TXT _acme-challenge.* only (iam-roles stack cert_manager_policy_arn output)
+    namespace_service_account: cert-manager/cert-manager
+    attached_policies: ["arn:aws:iam::808540602855:policy/dev-CertManagerRoute53Policy-us-east-1"]
   # dev-irsa-bedrock-invoke-us-east-1:
   #   namespace_service_account: CHANGE_ME-app-namespace/CHANGE_ME-app-sa
   #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-BedrockInvokePolicy-us-east-1"]
