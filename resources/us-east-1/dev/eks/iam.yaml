@@ -43,9 +43,9 @@ service_accounts:
   # dev-irsa-velero-us-east-1: # needs the s3 stack bucket first
   #   namespace_service_account: velero/velero
   #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-VeleroPolicy-us-east-1"]
-  # dev-irsa-external-dns-us-east-1:
-  #   namespace_service_account: external-dns/external-dns
-  #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-ExternalDnsPolicy-us-east-1"]
+  dev-irsa-external-dns-us-east-1: # A/AAAA/CNAME writes only (iam-roles stack external_dns_policy_arn output, #32)
+    namespace_service_account: external-dns/external-dns
+    attached_policies: ["arn:aws:iam::808540602855:policy/dev-ExternalDnsPolicy-us-east-1"]
   dev-irsa-cert-manager-us-east-1: # DNS01 via Route53, TXT _acme-challenge.* only (iam-roles stack cert_manager_policy_arn output)
     namespace_service_account: cert-manager/cert-manager
     attached_policies: ["arn:aws:iam::808540602855:policy/dev-CertManagerRoute53Policy-us-east-1"]
