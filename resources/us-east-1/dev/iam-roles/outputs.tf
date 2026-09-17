@@ -17,3 +17,8 @@ output "cert_manager_policy_arn" {
   description = "ARN of the cert-manager Route53 DNS-01 policy - paste into attached_policies in eks/iam.yaml"
   value       = aws_iam_policy.cert_manager.arn
 }
+
+output "external_dns_policy_arn" {
+  description = "ARN of the external-dns Route53 policy - paste into attached_policies in eks/iam.yaml"
+  value       = aws_iam_policy.external_dns.arn
+}

@@ -54,21 +54,12 @@ iam:
   #       - actions:
   #           - s3:ListBucket
   #         resources: ["arn:aws:s3:::dev-s3-us-east-1-velero-<account-id>"]
-  #   - name: dev-ExternalDnsPolicy-us-east-1
-  #     statements:
-  #       - actions:
-  #           - route53:ChangeResourceRecordSets
-  #         resources: ["arn:aws:route53:::hostedzone/*"] # narrow to your zone id
-  #       - actions:
-  #           - route53:ListHostedZones
-  #           - route53:ListResourceRecordSets
-  #           - route53:ListTagsForResource
-  #         resources: ["*"]
-  # dev-CertManagerRoute53Policy-us-east-1 - no longer a placeholder here.
-  # This policy needs a Condition block (TXT records named _acme-challenge.*
-  # only, scoped to hostedzone/Z033052035FXAKF23D1RR), which this schema
-  # cannot express - see cert-manager-policy.tf + cert-manager-route53-policy.json
-  # in this directory for the real, tighter version actually applied.
+  # dev-CertManagerRoute53Policy-us-east-1 and dev-ExternalDnsPolicy-us-east-1
+  # are no longer placeholders here. Both need a Condition block this schema
+  # cannot express (record types / record names) - see cert-manager-policy.tf
+  # + cert-manager-route53-policy.json, and external-dns-policy.tf +
+  # external-dns-route53-policy.json, in this directory for the real, tighter
+  # versions actually applied.
   #   - name: dev-BedrockInvokePolicy-us-east-1
   #     statements:
   #       - actions:
