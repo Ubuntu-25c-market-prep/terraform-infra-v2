@@ -2,7 +2,7 @@
 
 One repository per entry in `config.yaml` `repositories`, each merged
 over `repository_defaults`. Names come out as `<env>-ecr-<region>/<name>`
-(`dev-ecr-us-east-1/storefront`). The dev registry serves every
+(`dev-ecr-us-east-1/resume-builder`). The dev registry serves every
 environment until uat and prod have their own accounts; the uat/prod
 stacks stay unapplied until then. Tags are mutable in dev.
 

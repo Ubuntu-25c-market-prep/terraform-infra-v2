@@ -12,7 +12,13 @@ ecr:
     max_image_count: 50            # module default: null; counts tagged images too - size generously
 
   repositories:
-    - name: storefront # business app (apps-business); pushed by its pipeline once the push role exists
+    # Business apps (apps-business). Both are pushed from that repository's main
+    # branch by the dev-ecr-push-us-east-1 role, which is scoped to exactly that
+    # repo and ref and to repository/dev-ecr-us-east-1/* - so adding an app here
+    # needs no IAM change.
+    - name: resume-builder
+      image_tag_mutability: IMMUTABLE # promoted to every env from here - a tag must never change meaning
+    - name: proshop
       image_tag_mutability: IMMUTABLE # promoted to every env from here - a tag must never change meaning
   #   - name: app # lowercase alphanumeric with . _ / -
   #     image_tag_mutability: IMMUTABLE # any repository_defaults key can be overridden
