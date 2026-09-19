@@ -8,7 +8,7 @@
       "Resource": ["arn:aws:route53:::hostedzone/Z033052035FXAKF23D1RR"],
       "Condition": {
         "ForAllValues:StringEquals": {
-          "route53:ChangeResourceRecordSetsRecordTypes": ["A", "AAAA", "CNAME"]
+          "route53:ChangeResourceRecordSetsRecordTypes": ["A", "AAAA", "CNAME", "TXT"]
         }
       }
     },
