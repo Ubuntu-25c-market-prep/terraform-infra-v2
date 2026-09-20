@@ -1,5 +1,4 @@
-# Latest Amazon Linux 2023 resolved at plan time - AMI ids are region- and
-# time-specific and never belong in config (multi-env).
+# Latest Amazon Linux 2023, used when an instance sets no ami_id
 data "aws_ssm_parameter" "al2023" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }

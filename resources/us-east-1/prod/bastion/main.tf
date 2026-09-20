@@ -43,6 +43,7 @@ module "bastion" {
       subnet_id        = instance.subnet_id
       instance_type    = instance.instance_type
       root_volume_size = instance.root_volume_size
+      ami_id           = instance.ami_id
     }
   ]
 
