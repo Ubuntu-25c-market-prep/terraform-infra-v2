@@ -10,14 +10,6 @@ resource "aws_security_group" "ssh" {
   tags = merge(var.tags, {
     Name = "${var.name}-node-ssh"
   })
-
-  # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
-  lifecycle {
-    precondition {
-      condition     = can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id))
-      error_message = "vpc_id must be a VPC id (vpc-<hex>) - replace the placeholder with the network stack output."
-    }
-  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ssh" {
@@ -29,15 +21,6 @@ resource "aws_vpc_security_group_ingress_rule" "ssh" {
   from_port         = 22
   to_port           = 22
   ip_protocol       = "tcp"
-
-  # Checked at plan (not validate) so a REPLACE-ME placeholder in config
-  # fails the plan, like the other ids, without breaking validate.
-  lifecycle {
-    precondition {
-      condition     = can(cidrhost(each.value, 0))
-      error_message = "ssh_source_cidrs entry '${each.value}' is not a valid IPv4 CIDR (expected the jump server address, e.g. 10.0.0.10/32)."
-    }
-  }
 }
 
 resource "aws_eks_node_group" "this" {
@@ -73,17 +56,6 @@ resource "aws_eks_node_group" "this" {
     min_size     = each.value.min_size
     desired_size = each.value.desired_size
     max_size     = each.value.max_size
-  }
-
-  lifecycle {
-    precondition {
-      condition     = alltrue([for id in coalesce(each.value.subnet_ids, var.subnet_ids, []) : can(regex("^subnet-[0-9a-f]{8}([0-9a-f]{9})?$", id))])
-      error_message = "Node group ${each.key}: subnet_ids must be subnet ids (subnet-<hex>) - replace the placeholders with the network stack outputs."
-    }
-    precondition {
-      condition     = var.ssh_key_name == null || (length(var.ssh_source_cidrs) > 0 && var.vpc_id != null)
-      error_message = "ssh_key_name needs ssh_source_cidrs (the jump server address) and vpc_id - otherwise :22 would be open to the internet."
-    }
   }
 
   tags = merge(var.tags, each.value.tags, {

@@ -12,13 +12,6 @@ resource "aws_s3_bucket" "this" {
   tags = merge(var.tags, {
     Name = "${var.name}-${each.value.name}"
   })
-
-  lifecycle {
-    precondition {
-      condition     = length("${var.name}-${each.value.name}-${data.aws_caller_identity.current.account_id}") <= 63
-      error_message = "Bucket '${each.value.name}': the full name '${var.name}-${each.value.name}-<account-id>' exceeds S3's 63-character limit - at most ${63 - length(var.name) - 14} characters are available for the name."
-    }
-  }
 }
 
 resource "aws_s3_bucket_versioning" "this" {

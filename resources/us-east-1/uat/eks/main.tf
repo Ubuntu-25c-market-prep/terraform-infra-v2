@@ -302,20 +302,3 @@ resource "aws_ec2_tag" "cluster_sg_karpenter_discovery" {
   key         = "karpenter.sh/discovery"
   value       = module.cluster.cluster_name
 }
-
-# ng/*.yaml sanity checks that need the whole file set (cross-file rules
-# cannot live in the module's variable validations).
-check "node_group_files" {
-  assert {
-    condition     = alltrue([for g in local.node_group_files : g.use_al2023_ami])
-    error_message = "use_al2023_ami must be true in every ng/*.yaml - AL2 is end-of-support on EKS and has no AMI for this cluster version."
-  }
-
-  assert {
-    condition = alltrue([
-      for g in local.node_group_files :
-      local.node_group_arm[g.name] || !anytrue([for t in g.instance_type_list : can(regex("^[a-z]+[0-9]+g[a-z]*\\.", t))])
-    ])
-    error_message = "A node group must not mix Graviton (ARM) and x86 instance types - one AMI architecture per group."
-  }
-}

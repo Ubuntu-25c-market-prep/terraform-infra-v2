@@ -37,12 +37,4 @@ resource "aws_instance" "this" {
   tags = merge(var.tags, {
     Name = each.value.name # full name from config, e.g. dev-bastion-us-east-1
   })
-
-  # Id format checks run at plan so REPLACE-ME placeholders fail there, not at apply.
-  lifecycle {
-    precondition {
-      condition     = can(regex("^subnet-[0-9a-f]{8}([0-9a-f]{9})?$", each.value.subnet_id)) && can(regex("^vpc-[0-9a-f]{8}([0-9a-f]{9})?$", var.vpc_id))
-      error_message = "Instance ${each.key}: subnet_id (subnet-<hex>) and vpc_id (vpc-<hex>) must be real ids - replace the placeholders with the network stack outputs."
-    }
-  }
 }

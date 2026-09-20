@@ -10,7 +10,7 @@ environment, all values in YAML, CI driven by commit messages.
 ├── .github/workflows/     # plan on branch push, apply on merge - the stack
 │                          # folder comes from the commit message (see below)
 ├── modules/               # Reusable child modules - never run directly
-│   ├── vpc/               # VPC, public+private subnets, S3+DynamoDB gateway endpoints, no NAT
+│   ├── network/           # VPC, public+private subnets, S3+DynamoDB gateway endpoints, no NAT
 │   ├── ecr/               # Repositories + lifecycle policies
 │   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)

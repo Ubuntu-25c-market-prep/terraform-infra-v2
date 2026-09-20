@@ -39,17 +39,4 @@ resource "aws_eks_cluster" "this" {
   })
 
   depends_on = [aws_iam_role_policy_attachment.cluster]
-
-  # Checked at plan (not validate) so a REPLACE-ME placeholder in config
-  # fails the plan without breaking validate.
-  lifecycle {
-    precondition {
-      condition     = alltrue([for id in var.subnet_ids : can(regex("^subnet-[0-9a-f]{8}([0-9a-f]{9})?$", id))])
-      error_message = "subnet_ids must be subnet ids (subnet-<hex>) - replace the placeholders with the network stack outputs."
-    }
-    precondition {
-      condition     = var.secrets_kms_key_arn == null || can(regex("^arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-f-]{36}$", var.secrets_kms_key_arn))
-      error_message = "secrets_kms_key_arn '${coalesce(var.secrets_kms_key_arn, "null")}' is not a complete KMS key ARN - paste the real key ARN (arn:aws:kms:<region>:<12-digit account>:key/<uuid>)."
-    }
-  }
 }

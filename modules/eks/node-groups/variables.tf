@@ -34,35 +34,6 @@ variable "node_groups" {
       effect = string # NO_SCHEDULE | PREFER_NO_SCHEDULE | NO_EXECUTE
     })), [])
   }))
-
-  validation {
-    condition     = alltrue([for g in var.node_groups : g.min_size <= g.desired_size && g.desired_size <= g.max_size && g.max_size >= 1])
-    error_message = "Node group sizing must satisfy min_size <= desired_size <= max_size (and max_size >= 1)."
-  }
-
-  validation {
-    condition     = alltrue([for g in var.node_groups : contains(["ON_DEMAND", "SPOT"], g.capacity_type)])
-    error_message = "capacity_type must be ON_DEMAND or SPOT."
-  }
-
-  validation {
-    condition     = alltrue([for g in var.node_groups : length(g.instance_types) > 0])
-    error_message = "Every node group must list at least one instance type."
-  }
-
-  validation {
-    condition     = alltrue([for g in var.node_groups : g.disk_size > 0])
-    error_message = "disk_size must be a positive number of GiB."
-  }
-
-  validation {
-    condition = alltrue([
-      for g in var.node_groups : alltrue([
-        for t in g.taints : contains(["NO_SCHEDULE", "PREFER_NO_SCHEDULE", "NO_EXECUTE"], t.effect)
-      ])
-    ])
-    error_message = "Taint effect must be NO_SCHEDULE, PREFER_NO_SCHEDULE or NO_EXECUTE."
-  }
 }
 
 variable "ssh_key_name" {

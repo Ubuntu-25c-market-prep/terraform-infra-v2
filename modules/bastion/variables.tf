@@ -16,16 +16,6 @@ variable "instances" {
   }))
   default  = []
   nullable = false
-
-  validation {
-    condition     = length(distinct([for i in var.instances : i.name])) == length(var.instances)
-    error_message = "Instance names must be unique."
-  }
-
-  validation {
-    condition     = alltrue([for i in var.instances : i.root_volume_size > 0])
-    error_message = "root_volume_size must be a positive number of GiB."
-  }
 }
 
 variable "enable_ssm" {

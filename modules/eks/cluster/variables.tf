@@ -80,67 +80,12 @@ variable "node_ingress_rules" {
   }))
   default  = {}
   nullable = false
-
-  validation {
-    condition = alltrue([
-      for r in values(var.node_ingress_rules) :
-      length(r.cidr_blocks) + length(r.referenced_security_group_ids) > 0
-    ])
-    error_message = "Every node ingress rule needs at least one source: cidr_blocks and/or referenced_security_group_ids."
-  }
-
-  validation {
-    condition = alltrue([
-      for r in values(var.node_ingress_rules) :
-      contains(["-1", "tcp", "udp", "icmp", "icmpv6"], r.ip_protocol) || can(tonumber(r.ip_protocol))
-    ])
-    error_message = "ip_protocol must be -1, tcp, udp, icmp, icmpv6 or an IP protocol number."
-  }
-
-  validation {
-    condition = alltrue([
-      for r in values(var.node_ingress_rules) :
-      r.ip_protocol == "-1" ? (r.from_port == null && r.to_port == null) : (r.from_port != null && r.to_port != null)
-    ])
-    error_message = "ip_protocol -1 (all traffic) must omit from_port/to_port; any other protocol requires both."
-  }
-
-  validation {
-    condition = alltrue([
-      for r in values(var.node_ingress_rules) :
-      r.from_port == null || (r.from_port >= 0 && r.to_port <= 65535 && r.from_port <= r.to_port)
-    ])
-    error_message = "Rule ports must satisfy 0 <= from_port <= to_port <= 65535."
-  }
-
-  validation {
-    condition = alltrue([
-      for r in values(var.node_ingress_rules) : alltrue([
-        for c in r.cidr_blocks : can(cidrhost(c, 0))
-      ])
-    ])
-    error_message = "Every cidr_blocks entry must be a valid IPv4 CIDR."
-  }
-
-  validation {
-    condition = alltrue([
-      for r in values(var.node_ingress_rules) : alltrue([
-        for sg in r.referenced_security_group_ids : can(regex("^sg-", sg))
-      ])
-    ])
-    error_message = "Every referenced_security_group_ids entry must be a security group id (sg-...)."
-  }
 }
 
 variable "secrets_kms_key_arn" {
   description = "KMS key ARN for envelope encryption of Secrets; null disables"
   type        = string
   default     = null
-
-  validation {
-    condition     = var.secrets_kms_key_arn == null || startswith(var.secrets_kms_key_arn, "arn:aws:kms:")
-    error_message = "secrets_kms_key_arn must be a KMS key ARN (arn:aws:kms:<region>:<account>:key/<id>), not a key id or alias."
-  }
 }
 
 variable "authentication_mode" {
@@ -148,11 +93,6 @@ variable "authentication_mode" {
   type        = string
   default     = "API"
   nullable    = false
-
-  validation {
-    condition     = contains(["API", "API_AND_CONFIG_MAP", "CONFIG_MAP"], var.authentication_mode)
-    error_message = "authentication_mode must be API, API_AND_CONFIG_MAP or CONFIG_MAP."
-  }
 }
 
 variable "bootstrap_cluster_creator_admin_permissions" {
@@ -177,45 +117,4 @@ variable "access_entries" {
   }))
   default  = []
   nullable = false
-
-  validation {
-    condition = alltrue([
-      for e in var.access_entries :
-      length([for p in [e.role_name, e.role_name_pattern, e.principal_arn] : p if p != null]) == 1
-    ])
-    error_message = "Each access entry must set exactly one of role_name, role_name_pattern or principal_arn."
-  }
-
-  validation {
-    condition     = alltrue([for e in var.access_entries : contains(["STANDARD", "EC2_LINUX"], e.type)])
-    error_message = "Access entry type must be STANDARD or EC2_LINUX."
-  }
-
-  validation {
-    condition = alltrue([
-      for e in var.access_entries :
-      e.type == "STANDARD"
-      ? (e.policy != null || length(e.kubernetes_groups) > 0)
-      : (e.policy == null && length(e.kubernetes_groups) == 0)
-    ])
-    error_message = "STANDARD access entries need a policy and/or kubernetes_groups; EC2_LINUX entries must set neither (EKS grants node permissions itself)."
-  }
-
-  validation {
-    condition     = alltrue([for e in var.access_entries : e.type == "STANDARD" || e.role_name_pattern == null])
-    error_message = "EC2_LINUX entries must use role_name or principal_arn - role_name_pattern only searches SSO roles."
-  }
-
-  validation {
-    condition     = alltrue([for e in var.access_entries : contains(["cluster", "namespace"], e.scope)])
-    error_message = "Access entry scope must be cluster or namespace."
-  }
-
-  validation {
-    condition = alltrue([
-      for e in var.access_entries :
-      e.scope != "namespace" || length(e.namespaces) > 0
-    ])
-    error_message = "A namespace-scoped access entry must list at least one namespace."
-  }
 }

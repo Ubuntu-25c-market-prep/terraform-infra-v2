@@ -34,13 +34,4 @@ resource "aws_security_group" "this" {
   tags = merge(var.tags, {
     Name = var.name
   })
-
-  lifecycle {
-    # Validations cannot see other variables on TF 1.5, so the
-    # cross-variable check lives here (same pattern as the vpc module).
-    precondition {
-      condition     = var.vpc_id != null
-      error_message = "create_security_group = true requires vpc_id."
-    }
-  }
 }

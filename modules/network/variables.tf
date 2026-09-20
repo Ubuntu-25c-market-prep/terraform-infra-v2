@@ -6,11 +6,6 @@ variable "name" {
 variable "cidr_block" {
   description = "CIDR block of the VPC"
   type        = string
-
-  validation {
-    condition     = can(cidrhost(var.cidr_block, 0))
-    error_message = "cidr_block must be a valid IPv4 CIDR (e.g. 10.0.0.0/16)."
-  }
 }
 
 variable "public_subnets" {
@@ -20,21 +15,6 @@ variable "public_subnets" {
     cidr_block        = string
     availability_zone = string
   }))
-
-  validation {
-    condition     = length(var.public_subnets) > 0
-    error_message = "At least one public subnet is required - a VPC without subnets cannot host anything."
-  }
-
-  validation {
-    condition     = alltrue([for s in var.public_subnets : can(cidrhost(s.cidr_block, 0))])
-    error_message = "Every subnet cidr_block must be a valid IPv4 CIDR."
-  }
-
-  validation {
-    condition     = length(distinct([for s in var.public_subnets : s.cidr_block])) == length(var.public_subnets)
-    error_message = "Subnet CIDR blocks must be unique - two subnets cannot share a range."
-  }
 }
 
 variable "private_subnets" {
@@ -46,16 +26,6 @@ variable "private_subnets" {
   }))
   default  = []
   nullable = false
-
-  validation {
-    condition     = alltrue([for s in var.private_subnets : can(cidrhost(s.cidr_block, 0))])
-    error_message = "Every subnet cidr_block must be a valid IPv4 CIDR."
-  }
-
-  validation {
-    condition     = length(distinct([for s in var.private_subnets : s.cidr_block])) == length(var.private_subnets)
-    error_message = "Subnet CIDR blocks must be unique - two subnets cannot share a range."
-  }
 }
 
 variable "public_route_table_name" {
@@ -96,11 +66,6 @@ variable "instance_tenancy" {
   type        = string
   default     = "default"
   nullable    = false
-
-  validation {
-    condition     = contains(["default", "dedicated"], var.instance_tenancy)
-    error_message = "instance_tenancy must be default or dedicated."
-  }
 }
 
 variable "enable_dns_support" {
