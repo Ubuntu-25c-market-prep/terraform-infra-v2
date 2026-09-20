@@ -10,7 +10,7 @@ variable "instances" {
     subnet_id          = string
     instance_type      = optional(string, "t3.micro")
     security_group_ids = optional(list(string), [])
-    ami_id             = optional(string) # null = latest AL2023 x86_64 via SSM parameter (never a hardcoded AMI id)
+    ami_id             = optional(string) # null = latest AL2023 x86_64 via SSM parameter; an id pins the image
     root_volume_size   = optional(number, 20)
     user_data          = optional(string)
   }))

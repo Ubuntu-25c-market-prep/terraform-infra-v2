@@ -27,3 +27,4 @@ bastion:
       subnet_id: subnet-REPLACE-ME-public-a # network stack output public-a; must be a PUBLIC subnet
       instance_type: t3.micro   # default: t3.micro
       root_volume_size: 20      # default: 20 GiB
+      ami_id: null              # default: null = latest AL2023 at plan time; pin the id once the instance exists

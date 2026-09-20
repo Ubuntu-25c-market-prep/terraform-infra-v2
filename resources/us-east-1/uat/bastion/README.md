@@ -21,6 +21,7 @@ mistakes: [`docs/access.md`](../../../../docs/access.md).
 | `egress_rules` | SSH inside the VPC (node hops) and HTTPS out (SSM, dnf) |
 | `instances[].subnet_id` | network stack output - **must be a public subnet** |
 | `instances[].instance_type`, `root_volume_size` | sizing |
+| `instances[].ami_id` | `null` = latest Amazon Linux 2023 at plan time; an id pins the image, so a newer release never replaces the instance - change it only to rebuild on purpose |
 
 ## Outputs used by other stacks
 
