@@ -25,7 +25,7 @@ kms_key_id: null # AWS-managed encryption (EKS default); a KMS key ARN here = cu
 #   Project:
 
 eks:
-  create_oidc: true                  # IRSA needs it (iam-roles stack, iam.yaml service_accounts)
+  create_oidc: true                  # IRSA needs it (iam.yaml service_accounts)
   service_ipv4_cidr: 172.20.0.0/16   # default: null (AWS picks); must not overlap the VPC
   public_access_cidrs:               # default: [0.0.0.0/0]; only applies while endpoint_public_access is true
     - 10.3.0.0/16

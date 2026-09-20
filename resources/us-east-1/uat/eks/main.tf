@@ -258,7 +258,7 @@ module "cluster" {
 # Re-add them as their own change when this cluster goes live.
 
 module "irsa" {
-  source = "../../../../modules/iam-roles"
+  source = "../../../../modules/iam"
 
   # No prefix: iam.yaml keys are the FULL role names
   # (<env>-irsa-<workload>-<region>).

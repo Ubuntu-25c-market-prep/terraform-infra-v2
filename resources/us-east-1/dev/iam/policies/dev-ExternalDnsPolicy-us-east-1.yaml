@@ -1,0 +1,19 @@
+# external-dns Route53 record management: A/AAAA/CNAME writes, plus the TXT
+# ownership records of its registry, in ONE zone only
+# (never NS/SOA/CAA). Zone Z033052035FXAKF23D1RR is 25c-team1.art.
+# Attached by ARN from eks/iam.yaml (dev-irsa-external-dns-us-east-1).
+name: dev-ExternalDnsPolicy-us-east-1
+description: external-dns Route53 record management - A/AAAA/CNAME writes only, scoped to hostedzone/Z033052035FXAKF23D1RR (25c-team1.art)
+statements:
+  - sid: AllowManagedRecordWrites
+    actions: [route53:ChangeResourceRecordSets]
+    resources: [arn:aws:route53:::hostedzone/Z033052035FXAKF23D1RR]
+    conditions:
+      "ForAllValues:StringEquals":
+        route53:ChangeResourceRecordSetsRecordTypes: [A, AAAA, CNAME, TXT]
+  - sid: AllowListRecords
+    actions: [route53:ListResourceRecordSets]
+    resources: [arn:aws:route53:::hostedzone/Z033052035FXAKF23D1RR]
+  - sid: AllowZoneDiscovery
+    actions: [route53:ListHostedZones, route53:ListHostedZonesByName]
+    resources: ["*"]

@@ -12,7 +12,7 @@ environment, all values in YAML, CI driven by commit messages.
 ├── modules/               # Reusable child modules - never run directly
 │   ├── network/           # VPC, public+private subnets, S3+DynamoDB gateway endpoints, no NAT
 │   ├── ecr/               # Repositories + lifecycle policies
-│   ├── iam-roles/         # Roles: type service (AWS principals) or irsa
+│   ├── iam/               # Policies + roles: type service (AWS principals), github or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
 │   ├── bastion/           # jump host reached over SSM (no inbound port)
 │   ├── alb/               # Terraform-owned ALB + ip target groups; pods
@@ -31,7 +31,7 @@ environment, all values in YAML, CI driven by commit messages.
         │   ├── dev-values.yaml      # env name + env tags
         │   ├── network/             # VPC: 2 public + 2 private subnets, no NAT
         │   ├── ecr/                 # repositories array in config.yaml
-        │   ├── iam-roles/           # non-cluster IAM roles (roles array in config.yaml)
+        │   ├── iam/                 # non-cluster IAM: one file per policy/role (policies/, roles/)
         │   ├── s3/                  # buckets array in config.yaml
         │   ├── eks/                 # ONE stack: cluster + node groups (ng/)
         │   │                        # + extra SGs (sg/) + identity (iam.yaml)
@@ -97,7 +97,7 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
   roles for workloads (full names, policies by ARN), with
   ready-to-uncomment blocks for ebs-csi, the LB controller, Velero,
   external-dns, cert-manager and Bedrock. The customer-managed policies
-  they reference are declared in the `iam-roles` stack's `policies` array.
+  they reference are one file each in the `iam` stack's `policies/` folder.
 - EKS **addons are not managed here** — Flux CD owns them (see
   `resources/*/*/eks/README.md`).
 
@@ -178,11 +178,10 @@ and again only if the resource is recreated:
    `alb/config.yaml`, `nlb/config.yaml`
 3. `eks` → outputs `cluster_security_group_id`, `oidc_provider_arn`,
    `oidc_issuer_url`
-4. paste into `alb`/`nlb` (`backend_security_group_id`) and `iam-roles`
-   (`oidc_*`, only needed for irsa roles)
-4b. IRSA policies: `iam-roles` (`policies` array) → output `policy_arns` →
+4. paste into `alb`/`nlb` (`backend_security_group_id`)
+4b. IRSA policies: `iam` (`policies/<name>.yaml`) → output `policy_arns` →
    paste into `eks/iam.yaml` `attached_policies`, then apply `eks`
-5. `bastion`, `alb`, `nlb`, `iam-roles` in any order; `ecr`/`s3` anytime
+5. `bastion`, `alb`, `nlb`, `iam` in any order; `ecr`/`s3` anytime
 6. `bastion` → outputs `private_ips` (as a /32 into `eks/config.yaml`
    `node_jump_server_ssh`) and `security_group_id` (into
    `eks.cluster_ingress_rules`); `ssh_key_name` is already the bastion key

@@ -60,13 +60,10 @@ merge-before-release rule as IRSA roles in the eks stack.
 
 ## Prerequisites
 
-- The AWS Load Balancer Controller addon (Flux) with the **binding-only**
-  IRSA role: the `prod-AWSLoadBalancerControllerBindingPolicy-us-east-1`
-  policy is active in `../iam-roles/config.yaml`; paste its ARN (output
-  `policy_arns`) into the `prod-irsa-aws-load-balancer-controller-us-east-1`
-  entry in `../eks/iam.yaml` and uncomment it. Because Terraform creates
-  the LB resources, the role is register/deregister + describe, a
-  fraction of the upstream policy.
+- The AWS Load Balancer Controller addon (Flux) with its IRSA role
+  (`prod-irsa-aws-load-balancer-controller-us-east-1` in `../eks/iam.yaml`).
+  A TargetGroupBinding needs only describe + register/deregister targets,
+  which the controller policy in `../iam/policies/` already covers.
 - The `network` and `eks` stacks applied, and their output ids
   (`vpc_id`, subnet ids, `cluster_security_group_id`) pasted into
   `config.yaml` - this stack reads no remote state.

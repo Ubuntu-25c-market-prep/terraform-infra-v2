@@ -5,8 +5,7 @@ multipart uploads aborted after 7 days), one per entry in `config.yaml`
 `buckets`, merged over `bucket_defaults`. The
 final name is `<env>-s3-<region>-<name>-<account-id>`
 (`uat-s3-us-east-1-velero-<account-id>`); the account id is appended at
-plan time for global uniqueness, which leaves 33 characters for `name`
-(checked at plan).
+plan time for global uniqueness, which leaves 33 characters for `name`.
 
 ## Adding a bucket
 
@@ -14,7 +13,7 @@ plan time for global uniqueness, which leaves 33 characters for `name`
    is the template); any `bucket_defaults` key can be overridden.
 2. Open a PR with `- Path: /resources/us-east-1/uat/s3` in the commit
    message; merge applies it. Read the ARN from the `bucket_arns` output.
-3. Give the workload access: a policy in `../iam-roles/config.yaml`
+3. Give the workload access: a policy file in `../iam/policies/`
    (`policies`) naming that ARN, then an IRSA role in `../eks/iam.yaml`
    with the policy ARN in `attached_policies`, bound to the app's
    service account. The commented Velero entries in both files show the

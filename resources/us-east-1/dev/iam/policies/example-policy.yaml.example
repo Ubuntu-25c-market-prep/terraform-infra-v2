@@ -1,0 +1,28 @@
+# One customer-managed policy per file. Inactive until copied to <name>.yaml
+# (the stack reads policies/*.yaml only). `name` must equal the file name.
+name: dev-VeleroPolicy-us-east-1
+description: Velero EBS snapshots + backup bucket
+statements:
+  - actions:
+      - ec2:DescribeVolumes
+      - ec2:DescribeSnapshots
+      - ec2:CreateTags
+      - ec2:CreateVolume
+      - ec2:CreateSnapshot
+      - ec2:DeleteSnapshot
+    resources: ["*"]
+  - actions:
+      - s3:GetObject
+      - s3:DeleteObject
+      - s3:PutObject
+      - s3:AbortMultipartUpload
+      - s3:ListMultipartUploadParts
+    resources: ["arn:aws:s3:::dev-s3-us-east-1-velero-<account-id>/*"]
+  - actions: [s3:ListBucket]
+    resources: [arn:aws:s3:::dev-s3-us-east-1-velero-<account-id>]
+  - sid: OptionalKeys # sid and conditions are optional; conditions = {operator: {key: [values]}}
+    actions: [s3:PutObject]
+    resources: ["arn:aws:s3:::dev-s3-us-east-1-velero-<account-id>/*"]
+    conditions:
+      StringEquals:
+        s3:x-amz-server-side-encryption: [AES256]

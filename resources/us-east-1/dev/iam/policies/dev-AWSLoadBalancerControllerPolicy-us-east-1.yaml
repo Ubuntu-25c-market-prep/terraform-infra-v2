@@ -1,0 +1,151 @@
+# AWS Load Balancer Controller v3.5.0 upstream policy (full mode: the controller
+# creates and owns load balancers tagged elbv2.k8s.aws/cluster), translated 1:1 from
+# https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.5.0/docs/install/iam_policy.json
+# Attached by ARN from eks/iam.yaml (dev-irsa-aws-load-balancer-controller-us-east-1).
+name: dev-AWSLoadBalancerControllerPolicy-us-east-1
+description: AWS Load Balancer Controller v3.5.0 upstream policy (full mode) - see this file's header for the source
+statements:
+  - actions: [iam:CreateServiceLinkedRole]
+    resources: ["*"]
+    conditions:
+      StringEquals:
+        iam:AWSServiceName: [elasticloadbalancing.amazonaws.com]
+  - actions:
+      - ec2:DescribeAccountAttributes
+      - ec2:DescribeAddresses
+      - ec2:DescribeAvailabilityZones
+      - ec2:DescribeInternetGateways
+      - ec2:DescribeVpcs
+      - ec2:DescribeVpcPeeringConnections
+      - ec2:DescribeSubnets
+      - ec2:DescribeSecurityGroups
+      - ec2:DescribeInstances
+      - ec2:DescribeNetworkInterfaces
+      - ec2:DescribeTags
+      - ec2:GetCoipPoolUsage
+      - ec2:DescribeCoipPools
+      - ec2:GetSecurityGroupsForVpc
+      - ec2:DescribeIpamPools
+      - ec2:DescribeRouteTables
+      - elasticloadbalancing:DescribeLoadBalancers
+      - elasticloadbalancing:DescribeLoadBalancerAttributes
+      - elasticloadbalancing:DescribeListeners
+      - elasticloadbalancing:DescribeListenerCertificates
+      - elasticloadbalancing:DescribeSSLPolicies
+      - elasticloadbalancing:DescribeRules
+      - elasticloadbalancing:DescribeTargetGroups
+      - elasticloadbalancing:DescribeTargetGroupAttributes
+      - elasticloadbalancing:DescribeTargetHealth
+      - elasticloadbalancing:DescribeTags
+      - elasticloadbalancing:DescribeTrustStores
+      - elasticloadbalancing:DescribeListenerAttributes
+      - elasticloadbalancing:DescribeCapacityReservation
+    resources: ["*"]
+  - actions:
+      - cognito-idp:DescribeUserPoolClient
+      - acm:ListCertificates
+      - acm:DescribeCertificate
+      - iam:ListServerCertificates
+      - iam:GetServerCertificate
+      - waf-regional:GetWebACL
+      - waf-regional:GetWebACLForResource
+      - waf-regional:AssociateWebACL
+      - waf-regional:DisassociateWebACL
+      - wafv2:GetWebACL
+      - wafv2:GetWebACLForResource
+      - wafv2:AssociateWebACL
+      - wafv2:DisassociateWebACL
+      - shield:GetSubscriptionState
+      - shield:DescribeProtection
+      - shield:CreateProtection
+      - shield:DeleteProtection
+    resources: ["*"]
+  - actions:
+      - ec2:AuthorizeSecurityGroupIngress
+      - ec2:RevokeSecurityGroupIngress
+    resources: ["*"]
+  - actions: [ec2:CreateSecurityGroup]
+    resources: ["*"]
+  - actions: [ec2:CreateTags]
+    resources: ["arn:aws:ec2:*:*:security-group/*"]
+    conditions:
+      StringEquals:
+        ec2:CreateAction: [CreateSecurityGroup]
+      "Null":
+        aws:RequestTag/elbv2.k8s.aws/cluster: ["false"]
+  - actions:
+      - ec2:CreateTags
+      - ec2:DeleteTags
+    resources: ["arn:aws:ec2:*:*:security-group/*"]
+    conditions:
+      "Null":
+        aws:RequestTag/elbv2.k8s.aws/cluster: ["true"]
+        aws:ResourceTag/elbv2.k8s.aws/cluster: ["false"]
+  - actions:
+      - ec2:AuthorizeSecurityGroupIngress
+      - ec2:RevokeSecurityGroupIngress
+      - ec2:DeleteSecurityGroup
+    resources: ["*"]
+    conditions:
+      "Null":
+        aws:ResourceTag/elbv2.k8s.aws/cluster: ["false"]
+  - actions:
+      - elasticloadbalancing:CreateLoadBalancer
+      - elasticloadbalancing:CreateTargetGroup
+    resources: ["*"]
+    conditions:
+      "Null":
+        aws:RequestTag/elbv2.k8s.aws/cluster: ["false"]
+  - actions:
+      - elasticloadbalancing:CreateListener
+      - elasticloadbalancing:DeleteListener
+      - elasticloadbalancing:CreateRule
+      - elasticloadbalancing:DeleteRule
+    resources: ["*"]
+  - actions:
+      - elasticloadbalancing:AddTags
+      - elasticloadbalancing:RemoveTags
+    resources: ["arn:aws:elasticloadbalancing:*:*:targetgroup/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"]
+    conditions:
+      "Null":
+        aws:RequestTag/elbv2.k8s.aws/cluster: ["true"]
+        aws:ResourceTag/elbv2.k8s.aws/cluster: ["false"]
+  - actions:
+      - elasticloadbalancing:AddTags
+      - elasticloadbalancing:RemoveTags
+    resources: ["arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*", "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*", "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*", "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*"]
+  - actions:
+      - elasticloadbalancing:ModifyLoadBalancerAttributes
+      - elasticloadbalancing:SetIpAddressType
+      - elasticloadbalancing:SetSecurityGroups
+      - elasticloadbalancing:SetSubnets
+      - elasticloadbalancing:DeleteLoadBalancer
+      - elasticloadbalancing:ModifyTargetGroup
+      - elasticloadbalancing:ModifyTargetGroupAttributes
+      - elasticloadbalancing:DeleteTargetGroup
+      - elasticloadbalancing:ModifyListenerAttributes
+      - elasticloadbalancing:ModifyCapacityReservation
+      - elasticloadbalancing:ModifyIpPools
+    resources: ["*"]
+    conditions:
+      "Null":
+        aws:ResourceTag/elbv2.k8s.aws/cluster: ["false"]
+  - actions: [elasticloadbalancing:AddTags]
+    resources: ["arn:aws:elasticloadbalancing:*:*:targetgroup/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"]
+    conditions:
+      StringEquals:
+        elasticloadbalancing:CreateAction: [CreateTargetGroup, CreateLoadBalancer]
+      "Null":
+        aws:RequestTag/elbv2.k8s.aws/cluster: ["false"]
+  - actions:
+      - elasticloadbalancing:RegisterTargets
+      - elasticloadbalancing:DeregisterTargets
+    resources: ["arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"]
+  - actions:
+      - elasticloadbalancing:SetWebAcl
+      - elasticloadbalancing:ModifyListener
+      - elasticloadbalancing:AddListenerCertificates
+      - elasticloadbalancing:RemoveListenerCertificates
+      - elasticloadbalancing:ModifyRule
+      - elasticloadbalancing:SetRulePriorities
+    resources: ["*"]

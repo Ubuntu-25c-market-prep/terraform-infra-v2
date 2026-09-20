@@ -20,7 +20,7 @@ as a /32) enable SSH to the nodes from the bastion only; both `null` =
 no remote access. IRSA roles are named exactly as their `iam.yaml` key
 (`<env>-irsa-<workload>-<region>` - the region is in the name because the
 role is bound to this cluster's OIDC provider) and get the cluster's OIDC
-provider wired directly. Non-cluster IAM stays in the separate `iam-roles/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
+provider wired directly. Non-cluster IAM stays in the separate `iam/` stack. Addons (vpc-cni, kube-proxy, coredns, ...) are **not**
 managed here — Flux CD owns them after the cluster is up. EKS still
 installs its default self-managed versions at creation, so nodes join
 before Flux runs.
@@ -181,7 +181,7 @@ changes needed — the stack discovers files via `fileset()`.
 | Section | Keyed by | Notes |
 |---|---|---|
 | `access_entries` | principal: a full ARN (used verbatim) or a short name resolved via `role_name` (exact) / `role_name_pattern` (regex, for SSO roles whose names carry a random suffix) | `access_entry_type` `STANDARD` or `EC2_LINUX`; grant with `policy_arn` (an EKS access policy, `scope`/`namespaces` optional) and/or `kubernetes_groups` (cluster RBAC). EKS auto-creates entries for this stack's node groups - never list those; node pools from other stacks go in `eks.additional_node_pools_iam_roles`. The pattern lookup needs `iam:ListRoles` - plan via CI or as PlatformAdmin |
-| `service_accounts` | the **full** IRSA role name `<env>-irsa-<workload>-<region>`, used verbatim | `namespace_service_account: <ns>/<sa>` - the role is assumable only by that service account; `attached_policies` (ARNs: AWS-managed verbatim, customer-managed from the iam-roles stack `policy_arns` output); `description` optional. Put the role ARN (output `irsa_role_arns`) in the SA's `eks.amazonaws.com/role-arn` annotation. Merge the role before the Flux release that uses it |
+| `service_accounts` | the **full** IRSA role name `<env>-irsa-<workload>-<region>`, used verbatim | `namespace_service_account: <ns>/<sa>` - the role is assumable only by that service account; `attached_policies` (ARNs: AWS-managed verbatim, customer-managed from the iam stack `policy_arns` output); `description` optional. Put the role ARN (output `irsa_role_arns`) in the SA's `eks.amazonaws.com/role-arn` annotation. Merge the role before the Flux release that uses it |
 | `iam_role_tags` | - | extra tags on every IRSA role |
 
 Karpenter is not just an IRSA role (discovery tags, node role/instance
