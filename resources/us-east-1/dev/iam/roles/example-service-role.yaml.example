@@ -1,0 +1,9 @@
+# One role per file. Inactive until copied to <name>.yaml (the stack reads
+# roles/*.yaml only). `name` must equal the file name. Types: service (below)
+# and github (dev-ecr-push-us-east-1.yaml). IRSA roles: eks/iam.yaml.
+# service: assumed by an AWS service principal (EC2 instance profile,
+# Lambda, ...). type defaults to service; services needs at least one entry.
+name: dev-example-ssm-ec2-us-east-1
+type: service
+services: [ec2.amazonaws.com]
+policy_arns: ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]

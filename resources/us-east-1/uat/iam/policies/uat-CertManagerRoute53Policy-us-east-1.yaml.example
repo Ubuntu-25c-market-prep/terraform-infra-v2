@@ -1,0 +1,23 @@
+# cert-manager DNS-01 via Route53: TXT _acme-challenge.* writes in ONE zone only.
+# Zone Z033052035FXAKF23D1RR is 25c-team1.art (same account, shared with dev).
+# Attached by ARN from eks/iam.yaml (uat-irsa-cert-manager-us-east-1).
+name: uat-CertManagerRoute53Policy-us-east-1
+description: cert-manager DNS-01 via Route53 - TXT _acme-challenge.* writes only, scoped to hostedzone/Z033052035FXAKF23D1RR (25c-team1.art)
+statements:
+  - sid: AllowGetChange
+    actions: [route53:GetChange]
+    resources: ["arn:aws:route53:::change/*"]
+  - sid: AllowChallengeRecordWrites
+    actions: [route53:ChangeResourceRecordSets]
+    resources: [arn:aws:route53:::hostedzone/Z033052035FXAKF23D1RR]
+    conditions:
+      "ForAllValues:StringEquals":
+        route53:ChangeResourceRecordSetsRecordTypes: [TXT]
+      "ForAllValues:StringLike":
+        route53:ChangeResourceRecordSetsNormalizedRecordNames: ["_acme-challenge.*"]
+  - sid: AllowListRecords
+    actions: [route53:ListResourceRecordSets]
+    resources: [arn:aws:route53:::hostedzone/Z033052035FXAKF23D1RR]
+  - sid: AllowZoneLookup
+    actions: [route53:ListHostedZonesByName]
+    resources: ["*"]

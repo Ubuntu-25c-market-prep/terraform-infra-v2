@@ -2,7 +2,7 @@
 
 > **Status: not applied.** The stack is kept in the repo so an ALB is
 > one apply away: the ids in `config.yaml` are current and the
-> binding-only LB-controller role in the eks stack is in place. Until
+> LB-controller IRSA role in the eks stack is in place. Until
 > then nothing described below exists in AWS. A commit with
 > `- Path: /resources/us-east-1/dev/alb` creates the ALB on merge, so
 > leave the Path out of commits that only touch files here.
@@ -67,13 +67,10 @@ merge-before-release rule as IRSA roles in the eks stack.
 
 ## Prerequisites
 
-- The AWS Load Balancer Controller addon (Flux) with the **binding-only**
-  IRSA role: the `dev-AWSLoadBalancerControllerBindingPolicy-us-east-1`
-  policy is active in `../iam-roles/config.yaml`; paste its ARN (output
-  `policy_arns`) into the `dev-irsa-aws-load-balancer-controller-us-east-1`
-  entry in `../eks/iam.yaml` and uncomment it. Because Terraform creates
-  the LB resources, the role is register/deregister + describe, a
-  fraction of the upstream policy.
+- The AWS Load Balancer Controller addon (Flux) with its IRSA role
+  (`dev-irsa-aws-load-balancer-controller-us-east-1` in `../eks/iam.yaml`).
+  A TargetGroupBinding needs only describe + register/deregister targets,
+  which the controller policy in `../iam/policies/` already covers.
 - The `network` and `eks` stacks applied, and their output ids
   (`vpc_id`, subnet ids, `cluster_security_group_id`) pasted into
   `config.yaml` - this stack reads no remote state.

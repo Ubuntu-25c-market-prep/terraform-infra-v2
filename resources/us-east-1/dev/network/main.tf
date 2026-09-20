@@ -71,7 +71,7 @@ locals {
 }
 
 module "vpc" {
-  source = "../../../../modules/vpc"
+  source = "../../../../modules/network"
 
   name       = local.config.name
   cidr_block = local.vpc_cidr

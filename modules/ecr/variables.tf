@@ -15,25 +15,6 @@ variable "repositories" {
   }))
   default  = []
   nullable = false
-
-  validation {
-    condition     = alltrue([for repo in var.repositories : contains(["MUTABLE", "IMMUTABLE"], repo.image_tag_mutability)])
-    error_message = "image_tag_mutability must be MUTABLE or IMMUTABLE."
-  }
-
-  validation {
-    condition     = alltrue([for repo in var.repositories : can(regex("^[a-z][a-z0-9._/-]*$", repo.name))])
-    error_message = "Repository names must be lowercase alphanumeric with . _ / - (ECR requirement)."
-  }
-
-  validation {
-    condition = alltrue([
-      for repo in var.repositories :
-      (repo.untagged_expiry_days == null || repo.untagged_expiry_days > 0) &&
-      (repo.max_image_count == null || repo.max_image_count > 0)
-    ])
-    error_message = "untagged_expiry_days and max_image_count must be positive when set."
-  }
 }
 
 variable "tags" {

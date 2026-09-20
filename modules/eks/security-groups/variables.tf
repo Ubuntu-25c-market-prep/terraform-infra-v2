@@ -34,68 +34,6 @@ variable "security_groups" {
   }))
   default  = []
   nullable = false
-
-  validation {
-    condition = alltrue([
-      for g in var.security_groups : alltrue([
-        for r in concat(g.ingress, g.egress) :
-        length(r.cidr_blocks) + length(r.security_groups) > 0
-      ])
-    ])
-    error_message = "Every rule needs at least one source: cidr_blocks and/or security_groups."
-  }
-
-  validation {
-    condition = alltrue([
-      for g in var.security_groups : alltrue([
-        for r in concat(g.ingress, g.egress) : alltrue([
-          for sg in r.security_groups : can(regex("^sg-", sg))
-        ])
-      ])
-    ])
-    error_message = "Every security_groups entry must be a security group id (sg-...)."
-  }
-
-  validation {
-    condition = alltrue([
-      for g in var.security_groups : alltrue([
-        for r in concat(g.ingress, g.egress) :
-        contains(["-1", "tcp", "udp", "icmp", "icmpv6"], r.protocol) || can(tonumber(r.protocol))
-      ])
-    ])
-    error_message = "Rule protocol must be -1, tcp, udp, icmp, icmpv6 or an IP protocol number."
-  }
-
-  validation {
-    condition = alltrue([
-      for g in var.security_groups : alltrue([
-        for r in concat(g.ingress, g.egress) :
-        r.from_port >= -1 && r.to_port <= 65535 && r.from_port <= r.to_port
-      ])
-    ])
-    error_message = "Rule ports must satisfy -1 <= from_port <= to_port <= 65535."
-  }
-
-  validation {
-    condition = alltrue([
-      for g in var.security_groups : alltrue([
-        for r in concat(g.ingress, g.egress) :
-        r.protocol != "-1" || (r.from_port == 0 && r.to_port == 0)
-      ])
-    ])
-    error_message = "Protocol -1 (all traffic) requires from_port = 0 and to_port = 0."
-  }
-
-  validation {
-    condition = alltrue([
-      for g in var.security_groups : alltrue([
-        for r in concat(g.ingress, g.egress) : alltrue([
-          for c in r.cidr_blocks : can(cidrhost(c, 0))
-        ])
-      ])
-    ])
-    error_message = "Every cidr_blocks entry must be a valid IPv4 CIDR."
-  }
 }
 
 variable "tags" {

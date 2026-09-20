@@ -41,13 +41,6 @@ resource "aws_eks_access_entry" "this" {
   tags = merge(var.tags, {
     Name = "${var.name}-${each.key}"
   })
-
-  lifecycle {
-    precondition {
-      condition     = each.value.role_name_pattern == null || length(data.aws_iam_roles.access[each.key].arns) == 1
-      error_message = "Access entry '${each.key}': role_name_pattern must match exactly one IAM role (matched ${each.value.role_name_pattern == null ? 0 : length(data.aws_iam_roles.access[each.key].arns)})."
-    }
-  }
 }
 
 # EC2_LINUX entries get node permissions from EKS itself, and

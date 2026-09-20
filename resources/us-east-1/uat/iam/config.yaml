@@ -1,0 +1,4 @@
+# Stack-wide wiring only. Policies and roles are one file each under
+# policies/ and roles/ (README.md). IRSA roles belong to eks/iam.yaml.
+iam:
+  github_oidc_provider_arn: arn:aws:iam::808540602855:oidc-provider/token.actions.githubusercontent.com # required only for github roles

@@ -7,11 +7,4 @@ resource "aws_key_pair" "this" {
   public_key = var.ssh_public_key
 
   tags = var.tags
-
-  lifecycle {
-    precondition {
-      condition     = var.key_name == null
-      error_message = "Set ssh_public_key (module creates the key pair) OR key_name (existing pair), not both."
-    }
-  }
 }

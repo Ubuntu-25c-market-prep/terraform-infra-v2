@@ -1,11 +1,6 @@
 variable "name" {
   description = "Full name of the load balancer (also the prefix for target group names)"
   type        = string
-
-  validation {
-    condition     = length(var.name) <= 32 && can(regex("^[a-zA-Z0-9-]+$", var.name)) && !startswith(var.name, "internal-")
-    error_message = "ALB names are limited to 32 alphanumeric/hyphen characters and must not start with internal-."
-  }
 }
 
 variable "vpc_id" {
@@ -16,21 +11,11 @@ variable "vpc_id" {
 variable "subnet_ids" {
   description = "Subnets the load balancer places its ENIs in (one per AZ, at least two)"
   type        = list(string)
-
-  validation {
-    condition     = length(var.subnet_ids) >= 2
-    error_message = "An ALB requires subnets in at least two availability zones."
-  }
 }
 
 variable "backend_security_group_id" {
   description = "Security group of the targets (the EKS cluster SG - pod ENIs carry it under the VPC CNI). The module opens it to the ALB on every target/health-check port."
   type        = string
-
-  validation {
-    condition     = can(regex("^sg-", var.backend_security_group_id))
-    error_message = "backend_security_group_id must be a security group id (sg-...)."
-  }
 }
 
 variable "internal" {
@@ -44,22 +29,12 @@ variable "ingress_cidrs" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
   nullable    = false
-
-  validation {
-    condition     = length(var.ingress_cidrs) > 0 && alltrue([for c in var.ingress_cidrs : can(cidrhost(c, 0))])
-    error_message = "ingress_cidrs needs at least one valid IPv4 CIDR."
-  }
 }
 
 variable "ip_address_type" {
   description = "IP address type of the load balancer"
   type        = string
   default     = "ipv4"
-
-  validation {
-    condition     = contains(["ipv4", "dualstack"], var.ip_address_type)
-    error_message = "ip_address_type must be ipv4 or dualstack."
-  }
 }
 
 variable "idle_timeout" {
@@ -116,51 +91,6 @@ variable "target_groups" {
   }))
   default  = []
   nullable = false
-
-  validation {
-    condition     = length(distinct([for tg in var.target_groups : tg.name])) == length(var.target_groups)
-    error_message = "Target group names must be unique."
-  }
-
-  validation {
-    condition     = alltrue([for tg in var.target_groups : length("${var.name}-${tg.name}") <= 32])
-    error_message = "Target group names are limited to 32 characters including the '${var.name}-' prefix - ${32 - length(var.name) - 1} remain for the entry's name (it is a label, not the Service name: shorten it)."
-  }
-
-  validation {
-    condition     = alltrue([for tg in var.target_groups : tg.port >= 1 && tg.port <= 65535])
-    error_message = "Target group ports must be between 1 and 65535."
-  }
-
-  validation {
-    condition     = alltrue([for tg in var.target_groups : contains(["HTTP", "HTTPS"], tg.protocol)])
-    error_message = "Target group protocol must be HTTP or HTTPS (L4 traffic belongs on an NLB, not this module)."
-  }
-
-  validation {
-    condition     = alltrue([for tg in var.target_groups : tg.health_check.port == "traffic-port" || can(tonumber(tg.health_check.port))])
-    error_message = "health_check.port must be \"traffic-port\" or a port number (as a string)."
-  }
-
-  validation {
-    condition     = alltrue([for tg in var.target_groups : tg.routing.priority >= 1 && tg.routing.priority <= 50000])
-    error_message = "Listener rule priorities must be between 1 and 50000."
-  }
-
-  validation {
-    condition     = length(distinct([for tg in var.target_groups : tg.routing.priority])) == length(var.target_groups)
-    error_message = "Listener rule priorities must be unique across target groups."
-  }
-
-  validation {
-    condition     = alltrue([for tg in var.target_groups : length(tg.routing.path_patterns) + length(tg.routing.host_headers) > 0])
-    error_message = "Every target group needs at least one routing condition: path_patterns and/or host_headers."
-  }
-
-  validation {
-    condition     = alltrue([for tg in var.target_groups : alltrue([for p in tg.routing.path_patterns : startswith(p, "/")])])
-    error_message = "Every path pattern must start with /."
-  }
 }
 
 variable "tags" {

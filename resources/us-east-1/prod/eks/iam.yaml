@@ -32,15 +32,16 @@ access_entries:
 # verbatim; the region is in the name because an IRSA role is bound to
 # this cluster's OIDC provider). namespace_service_account = <namespace>/<service_account>.
 # attached_policies: AWS-managed ARNs verbatim; customer-managed ones
-# from the iam-roles stack (policies array -> policy_arns output).
+# from the iam stack (policies/<name>.yaml -> policy_arns output).
+# Inline statements go under `policy:` (same shape as a policy file's statements).
 service_accounts: {}
 # service_accounts:
 #   prod-irsa-ebs-csi-controller-us-east-1:
 #     namespace_service_account: kube-system/ebs-csi-controller-sa
 #     attached_policies: ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
-#   prod-irsa-aws-load-balancer-controller-us-east-1: # binding-only, Terraform owns the LBs; ARN from the iam-roles stack's policy_arns output (policy is active there)
+#   prod-irsa-aws-load-balancer-controller-us-east-1: # full mode, the controller owns the LBs
 #     namespace_service_account: kube-system/aws-load-balancer-controller
-#     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-AWSLoadBalancerControllerBindingPolicy-us-east-1"]
+#     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-AWSLoadBalancerControllerPolicy-us-east-1"]
 #   prod-irsa-velero-us-east-1: # needs the s3 stack bucket first
 #     namespace_service_account: velero/velero
 #     attached_policies: ["arn:aws:iam::<account-id>:policy/prod-VeleroPolicy-us-east-1"]

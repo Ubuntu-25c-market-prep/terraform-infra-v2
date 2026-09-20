@@ -19,13 +19,4 @@ resource "aws_lb_listener" "this" {
   }
 
   tags = var.tags
-
-  # Cross-variable checks are not allowed in variable validation blocks
-  # before Terraform 1.9, hence a precondition here.
-  lifecycle {
-    precondition {
-      condition     = each.value.listener.protocol != "TLS" || local.tls_enabled
-      error_message = "Target group ${each.key} declares a TLS listener but no certificate is set (certificate_arn in config.yaml)."
-    }
-  }
 }

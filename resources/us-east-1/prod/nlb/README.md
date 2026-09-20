@@ -92,10 +92,10 @@ several ports (e.g. 80 and 443 on an ingress gateway) gets one
 
 ## Prerequisites
 
-- The AWS Load Balancer Controller addon (Flux) with the **binding-only**
-  IRSA role - see the commented `aws-lb-controller` block in
-  `../eks/iam.yaml`. Because Terraform creates the LB resources, the role
-  is register/deregister + describe, a fraction of the upstream policy.
+- The AWS Load Balancer Controller addon (Flux) with its IRSA role
+  (`prod-irsa-aws-load-balancer-controller-us-east-1` in `../eks/iam.yaml`).
+  A TargetGroupBinding needs only describe + register/deregister targets,
+  which the controller policy in `../iam/policies/` already covers.
 - The `network` and `eks` stacks applied, and their output ids
   (`vpc_id`, subnet ids, `cluster_security_group_id`) pasted into
   `config.yaml` - this stack reads no remote state.
