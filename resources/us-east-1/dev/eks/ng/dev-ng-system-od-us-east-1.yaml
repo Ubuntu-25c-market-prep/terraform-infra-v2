@@ -7,8 +7,8 @@ instance_type_list:
   - t3.medium
 
 min_size: 1
-desired_size: 2
-max_size: 3
+desired_size: 3
+max_size: 4
 disk_size: 20 # GiB
 
 # k8s_labels: # none for this pool
