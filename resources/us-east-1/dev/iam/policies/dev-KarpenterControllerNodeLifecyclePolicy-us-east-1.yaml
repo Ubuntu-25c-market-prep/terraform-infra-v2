@@ -1,0 +1,80 @@
+# Karpenter v1.14.0 controller policy 1 of 6 (NodeLifecyclePolicy): launch,
+# tag and terminate EC2 instances and launch templates, only those tagged as
+# owned by dev-eks-us-east-1 and created for a NodePool. Translated 1:1 from
+# https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
+# (upstream splits the controller policy in six: one managed policy holds 6144 characters).
+# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1). Diff against
+# upstream on every Karpenter chart bump.
+name: dev-KarpenterControllerNodeLifecyclePolicy-us-east-1
+description: Karpenter v1.14.0 upstream NodeLifecyclePolicy for dev-eks-us-east-1 - see this file's header for the source
+statements:
+  - sid: AllowScopedEC2InstanceAccessActions
+    actions: [ec2:RunInstances, ec2:CreateFleet]
+    resources:
+      - "arn:aws:ec2:us-east-1::image/*"
+      - "arn:aws:ec2:us-east-1::snapshot/*"
+      - "arn:aws:ec2:us-east-1:*:security-group/*"
+      - "arn:aws:ec2:us-east-1:*:subnet/*"
+      - "arn:aws:ec2:us-east-1:*:capacity-reservation/*"
+      - "arn:aws:ec2:us-east-1:*:placement-group/*"
+  - sid: AllowScopedEC2LaunchTemplateAccessActions
+    actions: [ec2:RunInstances, ec2:CreateFleet]
+    resources: ["arn:aws:ec2:us-east-1:*:launch-template/*"]
+    conditions:
+      StringEquals:
+        aws:ResourceTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+      StringLike:
+        aws:ResourceTag/karpenter.sh/nodepool: ["*"]
+  - sid: AllowScopedEC2InstanceActionsWithTags
+    actions: [ec2:RunInstances, ec2:CreateFleet, ec2:CreateLaunchTemplate]
+    resources:
+      - "arn:aws:ec2:us-east-1:*:fleet/*"
+      - "arn:aws:ec2:us-east-1:*:instance/*"
+      - "arn:aws:ec2:us-east-1:*:volume/*"
+      - "arn:aws:ec2:us-east-1:*:network-interface/*"
+      - "arn:aws:ec2:us-east-1:*:launch-template/*"
+      - "arn:aws:ec2:us-east-1:*:spot-instances-request/*"
+    conditions:
+      StringEquals:
+        aws:RequestTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+        aws:RequestTag/eks:eks-cluster-name: [dev-eks-us-east-1]
+      StringLike:
+        aws:RequestTag/karpenter.sh/nodepool: ["*"]
+  - sid: AllowScopedResourceCreationTagging
+    actions: [ec2:CreateTags]
+    resources:
+      - "arn:aws:ec2:us-east-1:*:fleet/*"
+      - "arn:aws:ec2:us-east-1:*:instance/*"
+      - "arn:aws:ec2:us-east-1:*:volume/*"
+      - "arn:aws:ec2:us-east-1:*:network-interface/*"
+      - "arn:aws:ec2:us-east-1:*:launch-template/*"
+      - "arn:aws:ec2:us-east-1:*:spot-instances-request/*"
+    conditions:
+      StringEquals:
+        aws:RequestTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+        aws:RequestTag/eks:eks-cluster-name: [dev-eks-us-east-1]
+        ec2:CreateAction: [RunInstances, CreateFleet, CreateLaunchTemplate]
+      StringLike:
+        aws:RequestTag/karpenter.sh/nodepool: ["*"]
+  - sid: AllowScopedResourceTagging
+    actions: [ec2:CreateTags]
+    resources: ["arn:aws:ec2:us-east-1:*:instance/*"]
+    conditions:
+      StringEquals:
+        aws:ResourceTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+      StringLike:
+        aws:ResourceTag/karpenter.sh/nodepool: ["*"]
+      StringEqualsIfExists:
+        aws:RequestTag/eks:eks-cluster-name: [dev-eks-us-east-1]
+      "ForAllValues:StringEquals":
+        aws:TagKeys: ["eks:eks-cluster-name", karpenter.sh/nodeclaim, Name]
+  - sid: AllowScopedDeletion
+    actions: [ec2:TerminateInstances, ec2:DeleteLaunchTemplate]
+    resources:
+      - "arn:aws:ec2:us-east-1:*:instance/*"
+      - "arn:aws:ec2:us-east-1:*:launch-template/*"
+    conditions:
+      StringEquals:
+        aws:ResourceTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+      StringLike:
+        aws:ResourceTag/karpenter.sh/nodepool: ["*"]

@@ -1,0 +1,51 @@
+# Karpenter v1.14.0 controller policy 2 of 6 (IAMIntegrationPolicy): pass the
+# Karpenter node role to EC2, and manage the instance profiles Karpenter
+# creates for it at runtime (only profiles tagged for dev-eks-us-east-1).
+# Translated 1:1 from
+# https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
+# The passed role is roles/dev-karpenter-node-us-east-1.yaml (this stack).
+# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1).
+name: dev-KarpenterControllerIAMIntegrationPolicy-us-east-1
+description: Karpenter v1.14.0 upstream IAMIntegrationPolicy for dev-eks-us-east-1 - see this file's header for the source
+statements:
+  - sid: AllowPassingInstanceRole
+    actions: [iam:PassRole]
+    resources: ["arn:aws:iam::808540602855:role/dev-karpenter-node-us-east-1"]
+    conditions:
+      StringEquals:
+        iam:PassedToService: [ec2.amazonaws.com, ec2.amazonaws.com.cn]
+  - sid: AllowScopedInstanceProfileCreationActions
+    actions: [iam:CreateInstanceProfile]
+    resources: ["arn:aws:iam::808540602855:instance-profile/*"]
+    conditions:
+      StringEquals:
+        aws:RequestTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+        aws:RequestTag/eks:eks-cluster-name: [dev-eks-us-east-1]
+        aws:RequestTag/topology.kubernetes.io/region: [us-east-1]
+      StringLike:
+        aws:RequestTag/karpenter.k8s.aws/ec2nodeclass: ["*"]
+  - sid: AllowScopedInstanceProfileTagActions
+    actions: [iam:TagInstanceProfile]
+    resources: ["arn:aws:iam::808540602855:instance-profile/*"]
+    conditions:
+      StringEquals:
+        aws:ResourceTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+        aws:ResourceTag/topology.kubernetes.io/region: [us-east-1]
+        aws:RequestTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+        aws:RequestTag/eks:eks-cluster-name: [dev-eks-us-east-1]
+        aws:RequestTag/topology.kubernetes.io/region: [us-east-1]
+      StringLike:
+        aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass: ["*"]
+        aws:RequestTag/karpenter.k8s.aws/ec2nodeclass: ["*"]
+  - sid: AllowScopedInstanceProfileActions
+    actions:
+      - iam:AddRoleToInstanceProfile
+      - iam:RemoveRoleFromInstanceProfile
+      - iam:DeleteInstanceProfile
+    resources: ["arn:aws:iam::808540602855:instance-profile/*"]
+    conditions:
+      StringEquals:
+        aws:ResourceTag/kubernetes.io/cluster/dev-eks-us-east-1: [owned]
+        aws:ResourceTag/topology.kubernetes.io/region: [us-east-1]
+      StringLike:
+        aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass: ["*"]
