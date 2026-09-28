@@ -68,6 +68,5 @@ eks:
   #     ip_protocol: tcp
 
   # Node-pool roles created OUTSIDE this stack (e.g. Karpenter) -> EC2_LINUX access entries
-  additional_node_pools_iam_roles: []
-  # additional_node_pools_iam_roles:
-  #   - CHANGE_ME-karpenter-node
+  additional_node_pools_iam_roles:
+    - dev-karpenter-node-us-east-1 # iam stack, roles/dev-karpenter-node-us-east-1.yaml

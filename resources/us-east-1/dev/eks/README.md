@@ -184,7 +184,15 @@ changes needed — the stack discovers files via `fileset()`.
 | `service_accounts` | the **full** IRSA role name `<env>-irsa-<workload>-<region>`, used verbatim | `namespace_service_account: <ns>/<sa>` - the role is assumable only by that service account; `attached_policies` (ARNs: AWS-managed verbatim, customer-managed from the iam stack `policy_arns` output); `description` optional. Put the role ARN (output `irsa_role_arns`) in the SA's `eks.amazonaws.com/role-arn` annotation. Merge the role before the Flux release that uses it |
 | `iam_role_tags` | - | extra tags on every IRSA role |
 
-Karpenter is not just an IRSA role (discovery tags, node role/instance
-profile, SQS interruption queue) - it lands as its own change; the
-`karpenter.sh/discovery` tags stay absent until then because another
-cluster's Karpenter runs in this account.
+Karpenter is not just an IRSA role. Its AWS side is spread over four
+stacks, applied in this order:
+
+| Piece | Where |
+|---|---|
+| `karpenter.sh/discovery` tags | public subnets: network stack `public_subnet_tags`; cluster SG: `main.tf` here |
+| controller policies (six), node role | iam stack `policies/`, `roles/` |
+| controller IRSA role, node role access entry | here: `iam.yaml` `service_accounts`, `config.yaml` `eks.additional_node_pools_iam_roles` |
+| interruption queue, EventBridge rules | karpenter stack |
+
+The controller, the EC2NodeClass and the NodePools are delivered by Flux
+from `gitops-flux`.
