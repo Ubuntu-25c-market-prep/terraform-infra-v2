@@ -1,0 +1,14 @@
+# Karpenter v1.14.0 controller policy 5 of 6 (ZonalShiftPolicy): read the
+# zonal shift status of dev-eks-us-east-1, so Karpenter stops launching into
+# a zone that is shifted away. Read-only. Translated 1:1 from
+# https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
+# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1).
+name: dev-KarpenterControllerZonalShiftPolicy-us-east-1
+description: Karpenter v1.14.0 upstream ZonalShiftPolicy for dev-eks-us-east-1 - see this file's header for the source
+statements:
+  - sid: AllowZonalShiftStatusReadOnly
+    actions: [arc-zonal-shift:GetManagedResource]
+    resources: ["*"]
+    conditions:
+      StringEquals:
+        arc-zonal-shift:ResourceIdentifier: ["arn:aws:eks:us-east-1:808540602855:cluster/dev-eks-us-east-1"]

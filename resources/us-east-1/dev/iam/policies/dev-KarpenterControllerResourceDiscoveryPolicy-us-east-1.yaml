@@ -1,0 +1,37 @@
+# Karpenter v1.14.0 controller policy 6 of 6 (ResourceDiscoveryPolicy):
+# read-only lookups - instance types, spot prices, subnets, security groups,
+# AMI ids from SSM, instance profiles. Translated 1:1 from
+# https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
+# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1).
+name: dev-KarpenterControllerResourceDiscoveryPolicy-us-east-1
+description: Karpenter v1.14.0 upstream ResourceDiscoveryPolicy for dev-eks-us-east-1 - see this file's header for the source
+statements:
+  - sid: AllowRegionalReadActions
+    actions:
+      - ec2:DescribeCapacityReservations
+      - ec2:DescribeImages
+      - ec2:DescribeInstances
+      - ec2:DescribeInstanceStatus
+      - ec2:DescribeInstanceTypeOfferings
+      - ec2:DescribeInstanceTypes
+      - ec2:DescribeLaunchTemplates
+      - ec2:DescribePlacementGroups
+      - ec2:DescribeSecurityGroups
+      - ec2:DescribeSpotPriceHistory
+      - ec2:DescribeSubnets
+    resources: ["*"]
+    conditions:
+      StringEquals:
+        aws:RequestedRegion: [us-east-1]
+  - sid: AllowSSMReadActions
+    actions: [ssm:GetParameter]
+    resources: ["arn:aws:ssm:us-east-1::parameter/aws/service/*"]
+  - sid: AllowPricingReadActions
+    actions: [pricing:GetProducts]
+    resources: ["*"]
+  - sid: AllowUnscopedInstanceProfileListAction
+    actions: [iam:ListInstanceProfiles]
+    resources: ["*"]
+  - sid: AllowInstanceProfileReadActions
+    actions: [iam:GetInstanceProfile]
+    resources: ["arn:aws:iam::808540602855:instance-profile/*"]

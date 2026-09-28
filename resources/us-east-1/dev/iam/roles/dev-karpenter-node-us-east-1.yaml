@@ -1,0 +1,18 @@
+# service role: the EC2 instances Karpenter launches run as this role. Its own
+# role, not dev-eks-us-east-1-node: the managed node group's role and access
+# entry belong to the eks stack and go away with the node group.
+# The four policies are the upstream Karpenter v1.14.0 node role's
+# (KarpenterNodeRole in the CloudFormation template the controller policies cite).
+# No instance profile here: Karpenter creates and deletes its own at runtime
+# (policies/dev-KarpenterControllerIAMIntegrationPolicy-us-east-1.yaml).
+# Joins the cluster through eks/config.yaml eks.additional_node_pools_iam_roles
+# (EC2_LINUX access entry) - apply this stack first, the eks stack looks the role up by name.
+name: dev-karpenter-node-us-east-1
+type: service
+description: Node role for instances launched by Karpenter on dev-eks-us-east-1
+services: [ec2.amazonaws.com]
+policy_arns:
+  - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+  - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+  - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
+  - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # break-glass shell via Session Manager
