@@ -50,11 +50,22 @@ service_accounts:
   dev-irsa-cert-manager-us-east-1: # DNS01 via Route53, TXT _acme-challenge.* only
     namespace_service_account: cert-manager/cert-manager
     attached_policies: ["arn:aws:iam::808540602855:policy/dev-CertManagerRoute53Policy-us-east-1"]
+  dev-irsa-karpenter-us-east-1: # upstream v1.14.0 controller policy, six parts (one managed policy holds 6144 characters)
+    namespace_service_account: karpenter/karpenter
+    attached_policies:
+      - arn:aws:iam::808540602855:policy/dev-KarpenterControllerNodeLifecyclePolicy-us-east-1
+      - arn:aws:iam::808540602855:policy/dev-KarpenterControllerIAMIntegrationPolicy-us-east-1
+      - arn:aws:iam::808540602855:policy/dev-KarpenterControllerEKSIntegrationPolicy-us-east-1
+      - arn:aws:iam::808540602855:policy/dev-KarpenterControllerInterruptionPolicy-us-east-1
+      - arn:aws:iam::808540602855:policy/dev-KarpenterControllerZonalShiftPolicy-us-east-1
+      - arn:aws:iam::808540602855:policy/dev-KarpenterControllerResourceDiscoveryPolicy-us-east-1
   # dev-irsa-bedrock-invoke-us-east-1:
   #   namespace_service_account: CHANGE_ME-app-namespace/CHANGE_ME-app-sa
   #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-BedrockInvokePolicy-us-east-1"]
 
-# Karpenter is NOT just an IRSA role (discovery tags, node role, SQS
-# queue) - lands as its own change; no discovery tags until then.
+# Karpenter is NOT just an IRSA role. The rest: controller policies and
+# node role (iam stack), the node role's access entry (config.yaml
+# eks.additional_node_pools_iam_roles), discovery tags (network stack +
+# main.tf), interruption queue (karpenter stack).
 
 iam_role_tags: {} # extra tags on every IRSA role
