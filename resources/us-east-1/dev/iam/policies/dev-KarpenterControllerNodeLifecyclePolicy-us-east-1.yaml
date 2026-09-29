@@ -1,10 +1,5 @@
-# Karpenter v1.14.0 controller policy 1 of 6 (NodeLifecyclePolicy): launch,
-# tag and terminate EC2 instances and launch templates, only those tagged as
-# owned by dev-eks-us-east-1 and created for a NodePool. Translated 1:1 from
+# Karpenter v1.14.0 upstream NodeLifecyclePolicy, unchanged. Source:
 # https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
-# (upstream splits the controller policy in six: one managed policy holds 6144 characters).
-# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1). Diff against
-# upstream on every Karpenter chart bump.
 name: dev-KarpenterControllerNodeLifecyclePolicy-us-east-1
 description: Karpenter v1.14.0 upstream NodeLifecyclePolicy for dev-eks-us-east-1 - see this file's header for the source
 statements:

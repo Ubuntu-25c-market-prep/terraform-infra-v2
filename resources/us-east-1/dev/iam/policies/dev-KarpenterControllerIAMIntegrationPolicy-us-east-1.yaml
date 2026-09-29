@@ -1,10 +1,5 @@
-# Karpenter v1.14.0 controller policy 2 of 6 (IAMIntegrationPolicy): pass the
-# Karpenter node role to EC2, and manage the instance profiles Karpenter
-# creates for it at runtime (only profiles tagged for dev-eks-us-east-1).
-# Translated 1:1 from
+# Karpenter v1.14.0 upstream IAMIntegrationPolicy, unchanged. Source:
 # https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
-# The passed role is roles/dev-karpenter-node-us-east-1.yaml (this stack).
-# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1).
 name: dev-KarpenterControllerIAMIntegrationPolicy-us-east-1
 description: Karpenter v1.14.0 upstream IAMIntegrationPolicy for dev-eks-us-east-1 - see this file's header for the source
 statements:

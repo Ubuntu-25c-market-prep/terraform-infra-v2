@@ -1,13 +1,8 @@
-# Karpenter v1.14.0 controller policy 4 of 6 (InterruptionPolicy): read and
-# delete messages on the interruption queue (spot interruption, rebalance,
-# scheduled maintenance, instance state change). Translated 1:1 from
+# Karpenter v1.14.0 upstream InterruptionPolicy, unchanged. Source:
 # https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
-# The queue is dev-karpenter-us-east-1, created by the karpenter stack; the
-# policy can exist before the queue does (IAM does not check the ARN).
-# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1).
 name: dev-KarpenterControllerInterruptionPolicy-us-east-1
 description: Karpenter v1.14.0 upstream InterruptionPolicy for dev-eks-us-east-1 - see this file's header for the source
 statements:
   - sid: AllowInterruptionQueueActions
     actions: [sqs:DeleteMessage, sqs:GetQueueUrl, sqs:ReceiveMessage]
-    resources: ["arn:aws:sqs:us-east-1:808540602855:dev-karpenter-us-east-1"]
+    resources: ["arn:aws:sqs:us-east-1:808540602855:dev-sqs-karpenter-interruption-us-east-1"]

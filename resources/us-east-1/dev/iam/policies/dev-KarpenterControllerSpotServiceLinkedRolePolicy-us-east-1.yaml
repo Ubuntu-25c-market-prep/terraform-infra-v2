@@ -1,0 +1,10 @@
+# Not upstream: lets EC2 create AWSServiceRoleForEC2Spot on the first spot launch.
+name: dev-KarpenterControllerSpotServiceLinkedRolePolicy-us-east-1
+description: Karpenter controller - create the EC2 Spot service-linked role
+statements:
+  - sid: AllowSpotServiceLinkedRoleCreation
+    actions: [iam:CreateServiceLinkedRole]
+    resources: ["arn:aws:iam::808540602855:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"]
+    conditions:
+      StringEquals:
+        iam:AWSServiceName: [spot.amazonaws.com]
