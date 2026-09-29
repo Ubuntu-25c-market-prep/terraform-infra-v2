@@ -1,0 +1,57 @@
+# One entry per rule, merged over rule_defaults. name is the full rule
+# name: <env>-eventbridge-<name>-<region>, at most 64 characters.
+eventbridge:
+  rule_defaults:
+    description: null
+    enabled: true
+    event_pattern: null       # the pattern as YAML
+    schedule_expression: null # rate(...) or cron(...)
+    targets: []               # [{id, arn}]
+
+  rules:
+    # Karpenter v1.14.0 upstream rules; all send to the interruption queue (sqs stack).
+    - name: dev-eventbridge-karpenter-scheduled-change-us-east-1
+      description: AWS Health events to the Karpenter interruption queue
+      event_pattern:
+        source: [aws.health]
+        detail-type: [AWS Health Event]
+      targets:
+        - id: KarpenterInterruptionQueueTarget
+          arn: arn:aws:sqs:us-east-1:808540602855:dev-sqs-karpenter-interruption-us-east-1
+    - name: dev-eventbridge-karpenter-spot-interruption-us-east-1
+      description: Spot interruption warnings to the Karpenter interruption queue
+      event_pattern:
+        source: [aws.ec2]
+        detail-type: [EC2 Spot Instance Interruption Warning]
+      targets:
+        - id: KarpenterInterruptionQueueTarget
+          arn: arn:aws:sqs:us-east-1:808540602855:dev-sqs-karpenter-interruption-us-east-1
+    - name: dev-eventbridge-karpenter-rebalance-us-east-1
+      description: Rebalance recommendations to the Karpenter interruption queue
+      event_pattern:
+        source: [aws.ec2]
+        detail-type: [EC2 Instance Rebalance Recommendation]
+      targets:
+        - id: KarpenterInterruptionQueueTarget
+          arn: arn:aws:sqs:us-east-1:808540602855:dev-sqs-karpenter-interruption-us-east-1
+    - name: dev-eventbridge-karpenter-instance-state-change-us-east-1
+      description: Instance state changes to the Karpenter interruption queue
+      event_pattern:
+        source: [aws.ec2]
+        detail-type: [EC2 Instance State-change Notification]
+      targets:
+        - id: KarpenterInterruptionQueueTarget
+          arn: arn:aws:sqs:us-east-1:808540602855:dev-sqs-karpenter-interruption-us-east-1
+    - name: dev-eventbridge-karpenter-capacity-reservation-us-east-1
+      description: Capacity reservation interruption warnings to the Karpenter interruption queue
+      event_pattern:
+        source: [aws.ec2]
+        detail-type: [EC2 Capacity Reservation Instance Interruption Warning]
+      targets:
+        - id: KarpenterInterruptionQueueTarget
+          arn: arn:aws:sqs:us-east-1:808540602855:dev-sqs-karpenter-interruption-us-east-1
+  #   - name: dev-eventbridge-nightly-report-us-east-1
+  #     schedule_expression: cron(0 3 * * ? *)
+  #     targets:
+  #       - id: report-queue
+  #         arn: arn:aws:sqs:us-east-1:<account-id>:dev-sqs-report-us-east-1

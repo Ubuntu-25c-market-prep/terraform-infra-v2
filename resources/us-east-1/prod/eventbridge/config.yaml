@@ -1,0 +1,19 @@
+# One entry per rule, merged over rule_defaults. name is the full rule
+# name: <env>-eventbridge-<name>-<region>, at most 64 characters.
+eventbridge:
+  rule_defaults:
+    description: null
+    enabled: true
+    event_pattern: null       # the pattern as YAML
+    schedule_expression: null # rate(...) or cron(...)
+    targets: []               # [{id, arn}]
+
+  rules: []
+  # rules:
+  #   - name: prod-eventbridge-karpenter-spot-interruption-us-east-1
+  #     event_pattern:
+  #       source: [aws.ec2]
+  #       detail-type: [EC2 Spot Instance Interruption Warning]
+  #     targets:
+  #       - id: KarpenterInterruptionQueueTarget
+  #         arn: arn:aws:sqs:us-east-1:<account-id>:prod-sqs-karpenter-interruption-us-east-1
