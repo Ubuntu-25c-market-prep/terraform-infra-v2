@@ -11,8 +11,8 @@ desired_size: 4
 max_size: 5
 disk_size: 20 # GiB
 
-# k8s_labels: # none for this pool
-#   baseservice: system
+k8s_labels:
+  workload: system # node selector for what must stay on-demand
 
 # k8s_taints: # none for this pool; format is <key>: <value>:<Effect>
 #   baseservice: system:NoSchedule
