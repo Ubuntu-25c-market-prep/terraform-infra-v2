@@ -1,7 +1,5 @@
-# Karpenter v1.14.0 controller policy 3 of 6 (EKSIntegrationPolicy): read
-# dev-eks-us-east-1's API endpoint. Translated 1:1 from
+# Karpenter v1.14.0 upstream EKSIntegrationPolicy, unchanged. Source:
 # https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
-# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1).
 name: dev-KarpenterControllerEKSIntegrationPolicy-us-east-1
 description: Karpenter v1.14.0 upstream EKSIntegrationPolicy for dev-eks-us-east-1 - see this file's header for the source
 statements:

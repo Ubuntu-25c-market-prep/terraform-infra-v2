@@ -1,8 +1,5 @@
-# Karpenter v1.14.0 controller policy 6 of 6 (ResourceDiscoveryPolicy):
-# read-only lookups - instance types, spot prices, subnets, security groups,
-# AMI ids from SSM, instance profiles. Translated 1:1 from
+# Karpenter v1.14.0 upstream ResourceDiscoveryPolicy, unchanged. Source:
 # https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.14.0/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml
-# Attached by ARN from eks/iam.yaml (dev-irsa-karpenter-us-east-1).
 name: dev-KarpenterControllerResourceDiscoveryPolicy-us-east-1
 description: Karpenter v1.14.0 upstream ResourceDiscoveryPolicy for dev-eks-us-east-1 - see this file's header for the source
 statements:
