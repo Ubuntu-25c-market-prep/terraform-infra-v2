@@ -1,0 +1,16 @@
+# One entry per queue, merged over queue_defaults. name is the full queue
+# name: <env>-sqs-<name>-<region>.
+sqs:
+  queue_defaults:
+    message_retention_seconds: 345600 # 4 days
+    visibility_timeout_seconds: 30
+    receive_wait_time_seconds: 0      # 0 = short polling
+    kms_key_id: null                  # null = SQS-managed encryption
+    send_services: []                 # AWS service principals allowed to send
+
+  queues:
+    - name: dev-sqs-karpenter-interruption-us-east-1 # fed by the eventbridge stack, read by the Karpenter controller
+      message_retention_seconds: 300
+      send_services: [events.amazonaws.com, sqs.amazonaws.com]
+  #   - name: dev-sqs-orders-us-east-1
+  #     receive_wait_time_seconds: 20

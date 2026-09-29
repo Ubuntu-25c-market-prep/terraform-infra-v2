@@ -14,6 +14,7 @@ environment, all values in YAML, CI driven by commit messages.
 │   ├── ecr/               # Repositories + lifecycle policies
 │   ├── iam/               # Policies + roles: type service (AWS principals), github or irsa
 │   ├── s3/                # Hardened buckets (encrypted, private, TLS-only)
+│   ├── sqs/               # Standard queues (encrypted, TLS-only)
 │   ├── bastion/           # jump host reached over SSM (no inbound port)
 │   ├── alb/               # Terraform-owned ALB + ip target groups; pods
 │   │                      # join via TargetGroupBinding (never Ingress)
@@ -33,6 +34,7 @@ environment, all values in YAML, CI driven by commit messages.
         │   ├── ecr/                 # repositories array in config.yaml
         │   ├── iam/                 # non-cluster IAM: one file per policy/role (policies/, roles/)
         │   ├── s3/                  # buckets array in config.yaml
+        │   ├── sqs/                 # queues array in config.yaml
         │   ├── eks/                 # ONE stack: cluster + node groups (ng/)
         │   │                        # + extra SGs (sg/) + identity (iam.yaml)
         │   ├── alb/                 # ALB in front of the cluster - target
@@ -65,7 +67,8 @@ the parts a component owns appended (`dev-eks-us-east-1-node`,
 resource carries it as the `Org` default tag. Exceptions: IRSA roles
 (`<env>-irsa-<workload>-<region>`), node groups (`<env>-ng-<pool>-<region>`,
 the `ng/` file name), route tables (`<env>-route-<region>-<public|private>`),
-S3 buckets (`<env>-s3-<region>-<name>-<account-id>`) and ECR
+S3 buckets (`<env>-s3-<region>-<name>-<account-id>`), SQS queues
+(`<env>-sqs-<name>-<region>`) and ECR
 repositories (`<env>-ecr-<region>/<app>`; the dev registry serves every
 environment until uat and prod have their own accounts).
 
@@ -85,9 +88,9 @@ global-values.yaml → regional-values.yaml → <env>-values.yaml → <stack>/co
 - **Strict lookups on purpose**: every value a stack uses is stated in
   YAML; a missing key fails the plan instead of silently using a module
   default. `# default:` comments are reference only.
-- **Per-item arrays**: repositories, buckets, roles and target groups are
+- **Per-item arrays**: repositories, buckets, queues, roles and target groups are
   arrays in their stack's `config.yaml` (`ecr.repositories`, `s3.buckets`,
-  `iam.roles`, `alb.target_groups`, `nlb.target_groups`), each entry merged
+  `sqs.queues`, `iam.roles`, `alb.target_groups`, `nlb.target_groups`), each entry merged
   over that stack's `*_defaults`; a commented example entry under each
   array is the template. The eks stack is the exception: node groups and
   security groups stay one file each under `eks/ng/` and `eks/sg/`
@@ -181,7 +184,7 @@ and again only if the resource is recreated:
 4. paste into `alb`/`nlb` (`backend_security_group_id`)
 4b. IRSA policies: `iam` (`policies/<name>.yaml`) → output `policy_arns` →
    paste into `eks/iam.yaml` `attached_policies`, then apply `eks`
-5. `bastion`, `alb`, `nlb`, `iam` in any order; `ecr`/`s3` anytime
+5. `bastion`, `alb`, `nlb`, `iam` in any order; `ecr`/`s3`/`sqs` anytime
 6. `bastion` → outputs `private_ips` (as a /32 into `eks/config.yaml`
    `node_jump_server_ssh`) and `security_group_id` (into
    `eks.cluster_ingress_rules`); `ssh_key_name` is already the bastion key
