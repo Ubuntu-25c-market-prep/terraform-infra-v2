@@ -60,6 +60,9 @@ service_accounts:
       - arn:aws:iam::808540602855:policy/dev-KarpenterControllerZonalShiftPolicy-us-east-1
       - arn:aws:iam::808540602855:policy/dev-KarpenterControllerResourceDiscoveryPolicy-us-east-1
       - arn:aws:iam::808540602855:policy/dev-KarpenterControllerSpotServiceLinkedRolePolicy-us-east-1 # not upstream
+  dev-irsa-keda-operator-us-east-1: # SQS reads for queue-length scalers
+    namespace_service_account: keda/keda-operator
+    attached_policies: ["arn:aws:iam::aws:policy/AmazonSQSReadOnlyAccess"]
   # dev-irsa-bedrock-invoke-us-east-1:
   #   namespace_service_account: CHANGE_ME-app-namespace/CHANGE_ME-app-sa
   #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-BedrockInvokePolicy-us-east-1"]
