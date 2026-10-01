@@ -41,9 +41,9 @@ service_accounts:
   dev-irsa-aws-load-balancer-controller-us-east-1: # full mode: the controller creates/owns LBs tagged elbv2.k8s.aws/cluster
     namespace_service_account: kube-system/aws-load-balancer-controller
     attached_policies: ["arn:aws:iam::808540602855:policy/dev-AWSLoadBalancerControllerPolicy-us-east-1"]
-  # dev-irsa-velero-us-east-1: # needs the s3 stack bucket first
-  #   namespace_service_account: velero/velero
-  #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-VeleroPolicy-us-east-1"]
+  dev-irsa-velero-us-east-1: # backups: velero bucket (s3 stack) + EBS snapshots
+    namespace_service_account: velero/velero
+    attached_policies: ["arn:aws:iam::808540602855:policy/dev-VeleroPolicy-us-east-1"]
   dev-irsa-external-dns-us-east-1: # A/AAAA/CNAME + registry TXT writes only
     namespace_service_account: external-dns/external-dns
     attached_policies: ["arn:aws:iam::808540602855:policy/dev-ExternalDnsPolicy-us-east-1"]
