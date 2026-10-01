@@ -8,10 +8,17 @@ s3:
     force_destroy: false  # true lets terraform destroy a NON-EMPTY bucket
     lifecycle_rules: []   # [{id, prefix?, expiration_days?, noncurrent_expiration_days?}]
 
-  buckets: []
-  # buckets:
-  #   - name: velero # Velero backups - activate together with the velero IRSA role (eks/iam.yaml)
-  #     lifecycle_rules:
-  #       - id: expire-old-backups
-  #         expiration_days: 90
-  #         noncurrent_expiration_days: 30
+  buckets:
+    # Velero backups of dev-eks-us-east-1: resource YAML and backup metadata.
+    # The EBS-snapshot half of a backup lives in EC2, not here. Written by
+    # dev-irsa-velero-us-east-1 (eks/iam.yaml) through
+    # dev-VeleroPolicy-us-east-1 (iam/policies).
+    #
+    # expiration_days is a floor under Velero's own Schedule ttl, not a
+    # substitute: keep it ABOVE the longest ttl in gitops-flux, or S3 deletes
+    # backups Velero still lists.
+    - name: velero
+      lifecycle_rules:
+        - id: expire-old-backups
+          expiration_days: 90
+          noncurrent_expiration_days: 30
