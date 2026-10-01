@@ -1,0 +1,41 @@
+# Velero backup/restore for dev-eks-us-east-1. A backup has two halves and
+# this policy covers both: resource YAML in the velero bucket (s3 stack) and
+# native EBS snapshots of every PVC through EC2.
+# Attached by ARN from eks/iam.yaml (dev-irsa-velero-us-east-1).
+name: dev-VeleroPolicy-us-east-1
+description: Velero backups - read/write on the dev velero bucket, create/delete EBS snapshots and restore volumes from them
+statements:
+  # Describe* has no resource-level permissions, and CreateSnapshot/CreateVolume
+  # have no ARN to scope to before they run: "*" is the ceiling AWS allows.
+  - sid: AllowSnapshotDiscoveryAndCreation
+    actions:
+      - ec2:DescribeVolumes
+      - ec2:DescribeSnapshots
+      - ec2:CreateSnapshot
+      - ec2:CreateVolume
+    resources: ["*"]
+  # Tagging only in the same call that creates the snapshot or volume - this
+  # role can label what it just made and nothing else.
+  - sid: AllowTaggingOnCreate
+    actions: [ec2:CreateTags]
+    resources:
+      - arn:aws:ec2:us-east-1:808540602855:snapshot/*
+      - arn:aws:ec2:us-east-1:808540602855:volume/*
+    conditions:
+      StringEquals:
+        ec2:CreateAction: [CreateSnapshot, CreateVolume]
+  # Expired backups delete their snapshots. Snapshots only, never volumes.
+  - sid: AllowSnapshotDeletion
+    actions: [ec2:DeleteSnapshot]
+    resources: [arn:aws:ec2:us-east-1:808540602855:snapshot/*]
+  - sid: AllowBackupObjects
+    actions:
+      - s3:GetObject
+      - s3:DeleteObject
+      - s3:PutObject
+      - s3:AbortMultipartUpload
+      - s3:ListMultipartUploadParts
+    resources: ["arn:aws:s3:::dev-s3-us-east-1-velero-808540602855/*"]
+  - sid: AllowBackupBucketList
+    actions: [s3:ListBucket]
+    resources: [arn:aws:s3:::dev-s3-us-east-1-velero-808540602855]
