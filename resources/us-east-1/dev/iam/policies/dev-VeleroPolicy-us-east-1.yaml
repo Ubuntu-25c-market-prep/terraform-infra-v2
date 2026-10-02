@@ -16,10 +16,15 @@ statements:
     resources: ["*"]
   # Tagging only in the same call that creates the snapshot or volume - this
   # role can label what it just made and nothing else.
+  #
+  # Snapshot ARNs have an EMPTY account field (arn:aws:ec2:<region>::snapshot/*);
+  # volume ARNs carry the account id. With the account id in the snapshot ARN
+  # this statement never matches, and every CreateSnapshot fails with
+  # UnauthorizedOperation on ec2:CreateTags.
   - sid: AllowTaggingOnCreate
     actions: [ec2:CreateTags]
     resources:
-      - arn:aws:ec2:us-east-1:808540602855:snapshot/*
+      - arn:aws:ec2:us-east-1::snapshot/*
       - arn:aws:ec2:us-east-1:808540602855:volume/*
     conditions:
       StringEquals:
@@ -27,7 +32,7 @@ statements:
   # Expired backups delete their snapshots. Snapshots only, never volumes.
   - sid: AllowSnapshotDeletion
     actions: [ec2:DeleteSnapshot]
-    resources: [arn:aws:ec2:us-east-1:808540602855:snapshot/*]
+    resources: [arn:aws:ec2:us-east-1::snapshot/*]
   - sid: AllowBackupObjects
     actions:
       - s3:GetObject
