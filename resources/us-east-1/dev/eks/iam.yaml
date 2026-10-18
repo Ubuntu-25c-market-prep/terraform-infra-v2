@@ -63,6 +63,31 @@ service_accounts:
   dev-irsa-keda-operator-us-east-1: # SQS reads for queue-length scalers
     namespace_service_account: keda/keda-operator
     attached_policies: ["arn:aws:iam::aws:policy/AmazonSQSReadOnlyAccess"]
+
+  # Argo Workflows (gitops-argocd#3). TWO roles, because the write and the
+  # read happen in different pods:
+  #
+  #   argo-workflow  is the service account WORKFLOWS RUN AS. The artifact
+  #                  upload happens in the workflow pod's own `wait` sidecar,
+  #                  so the read/write role belongs here - deliberately NOT on
+  #                  the namespace default SA, or anything scheduled into
+  #                  argo-workflows would inherit bucket access it never asked
+  #                  for.
+  #   argo-server    only displays artifacts in the UI, so it gets the
+  #                  read-only policy. Widen it if artifactGC is enabled; see
+  #                  the policy file.
+  #
+  # The workflow-controller needs NO AWS access at all - it schedules pods, it
+  # does not touch S3. There is no role for it on purpose.
+  #
+  # S3 only, one bucket. Workflows is for orchestration here; image builds
+  # stay with the GitHub Actions pipeline in apps-business.
+  dev-irsa-argo-workflows-us-east-1: # artifact read/write, for pods running workflows
+    namespace_service_account: argo-workflows/argo-workflow
+    attached_policies: ["arn:aws:iam::808540602855:policy/dev-ArgoWorkflowsArtifactsPolicy-us-east-1"]
+  dev-irsa-argo-workflows-server-us-east-1: # read-only, for showing artifacts in the UI
+    namespace_service_account: argo-workflows/argo-server
+    attached_policies: ["arn:aws:iam::808540602855:policy/dev-ArgoWorkflowsArtifactsReadPolicy-us-east-1"]
   # dev-irsa-bedrock-invoke-us-east-1:
   #   namespace_service_account: CHANGE_ME-app-namespace/CHANGE_ME-app-sa
   #   attached_policies: ["arn:aws:iam::<account-id>:policy/dev-BedrockInvokePolicy-us-east-1"]
