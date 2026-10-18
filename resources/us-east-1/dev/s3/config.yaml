@@ -22,3 +22,18 @@ s3:
         - id: expire-old-backups
           expiration_days: 90
           noncurrent_expiration_days: 30
+
+    # Argo Workflows artifact repository (gitops-argocd#3). Workflow artifacts
+    # are intermediate build/run output, not records - a workflow that needs
+    # its output kept should write it somewhere deliberate instead. 30 days is
+    # long enough to debug a failed run and short enough that nobody treats
+    # this as storage.
+    #
+    # Versioning stays on (bucket_defaults) so an overwrite is recoverable,
+    # but noncurrent versions go after 7 days - there is no reason to keep
+    # superseded copies of a transient artifact for a month.
+    - name: argo-workflows
+      lifecycle_rules:
+        - id: expire-artifacts
+          expiration_days: 30
+          noncurrent_expiration_days: 7
