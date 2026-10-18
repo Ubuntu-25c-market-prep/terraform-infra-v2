@@ -1,0 +1,31 @@
+# Argo Workflows artifact repository access for the pods that RUN workflows
+# (gitops-argocd#3). The artifact write happens in the workflow pod's own
+# `wait` sidecar, not in the controller, so this is attached to the service
+# account workflows run as - NOT to the namespace default, so a job scheduled
+# into argo-workflows does not silently inherit bucket access.
+#
+# S3 ONLY, and one bucket only. Argo Workflows here is for orchestration:
+# in-cluster scheduled and triggered jobs. It does NOT build images - the
+# GitHub Actions pipeline in apps-business does, over OIDC - so there are
+# deliberately no ECR permissions here. If Workflows is ever given image
+# builds, that is a scope change that needs its own decision, not an extra
+# action quietly appended to this file.
+#
+# Attached by ARN from eks/iam.yaml (dev-irsa-argo-workflows-us-east-1).
+name: dev-ArgoWorkflowsArtifactsPolicy-us-east-1
+description: Argo Workflows artifact read/write, scoped to the dev-s3-us-east-1-argo-workflows bucket - no ECR, no other bucket
+statements:
+  - sid: AllowArtifactObjects
+    actions:
+      - s3:GetObject
+      - s3:PutObject
+      - s3:DeleteObject
+      - s3:AbortMultipartUpload
+      - s3:ListMultipartUploadParts
+    resources: ["arn:aws:s3:::dev-s3-us-east-1-argo-workflows-808540602855/*"]
+  - sid: AllowArtifactBucketList
+    # On the bucket itself, not its objects - s3:ListBucket takes the bucket
+    # ARN with no /*. Getting this wrong is the usual cause of an
+    # "access denied" that only appears when a workflow lists a prefix.
+    actions: [s3:ListBucket]
+    resources: ["arn:aws:s3:::dev-s3-us-east-1-argo-workflows-808540602855"]
