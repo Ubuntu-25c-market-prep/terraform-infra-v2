@@ -1,0 +1,21 @@
+# Argo Workflows SERVER access to the artifact bucket (gitops-argocd#3).
+# Separate from the workflow pods' policy, and read-only, because the server's
+# job is to show artifacts in the UI - it does not produce them.
+#
+# ⚠️ WIDEN THIS IF ARTIFACT GARBAGE COLLECTION IS ENABLED. With
+# `artifactGC` configured, deleting a workflow deletes its artifacts, and
+# that delete is performed with these credentials - it will fail with
+# AccessDenied until s3:DeleteObject is added here. Stated rather than
+# pre-granted: a server that can delete every artifact is a bigger thing
+# than a server that can display them, and should be a deliberate change.
+#
+# Attached by ARN from eks/iam.yaml (dev-irsa-argo-workflows-server-us-east-1).
+name: dev-ArgoWorkflowsArtifactsReadPolicy-us-east-1
+description: Argo Workflows server - READ-ONLY on the dev-s3-us-east-1-argo-workflows bucket, for displaying artifacts in the UI
+statements:
+  - sid: AllowArtifactReads
+    actions: [s3:GetObject]
+    resources: ["arn:aws:s3:::dev-s3-us-east-1-argo-workflows-808540602855/*"]
+  - sid: AllowArtifactBucketList
+    actions: [s3:ListBucket]
+    resources: ["arn:aws:s3:::dev-s3-us-east-1-argo-workflows-808540602855"]
