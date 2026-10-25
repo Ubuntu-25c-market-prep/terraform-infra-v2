@@ -43,7 +43,15 @@ jobs:
           # github.event.before = where main was before this merge
           messages="$(git log --format=%B ${{ github.event.before }}..HEAD)"
 
-          dir="$(echo "$messages" | grep -o 'Path: */[^ ]*' | head -1 | sed 's|Path: */||')"
+          # Newest "Path:" that is a real stack folder. Skips paths GitHub cut
+          # with "…" when a long commit message became the PR title / merge commit.
+          dir=""
+          for p in $(echo "$messages" | grep -o 'Path: */[^ ]*' | sed 's|Path: */||'); do
+            if [ -d "$p" ] && [[ "$p" == resources/* ]]; then
+              dir="$p"
+              break
+            fi
+          done
 
           if [ ! -d "$dir" ] || [[ "$dir" != resources/* ]]; then
             echo "::error::No merged commit has '- Path: /resources/<region>/<env>/<stack>' (got '$dir')"
